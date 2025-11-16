@@ -1,4 +1,4 @@
-import zterrorlog from '../models/mongodb/zterrorlog.js';
+import zterrorlog from "../models/mongodb/zterrorlog.js";
 import { getAISolution } from "../services/ai-service.js";
 
 // === GET ALL ===
@@ -24,7 +24,7 @@ const GetAllErrors = async () => {
 // === GET ONE ===
 const GetOneError = async (id) => {
   try {
-    const error = await zterrorlog.findById(id).lean();
+    const error = await zterrorlog.findOne({ ERRORID: id }).lean();
     if (!error) {
       return JSON.stringify({
         status: 404,
@@ -37,7 +37,7 @@ const GetOneError = async (id) => {
       data: error,
     });
   } catch (error) {
-    console.error("❌ [GetOneError] Error:", error);
+    console.error("[GetOneError] Error:", error);
     return JSON.stringify({
       status: 500,
       message: "Internal error in GetOneError",
@@ -84,7 +84,9 @@ const InsertOneError = async (error) => {
 const UpdateOneError = async (error) => {
   const { _id } = error;
   try {
-    const editedError = await zterrorlog.findOneAndUpdate({ _id }, error, { new: true });
+    const editedError = await zterrorlog.findOneAndUpdate({ _id }, error, {
+      new: true,
+    });
     if (!editedError) {
       return JSON.stringify({
         status: 404,

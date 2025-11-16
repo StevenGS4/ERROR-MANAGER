@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const zterrorlogSchema = new mongoose.Schema(
   {
     ERRORID: {
-      type: Number,
+      type: String,
       required: true,
     },
 
