@@ -3,17 +3,20 @@ import mongoose from "mongoose";
 
 const zterrorlogSchema = new mongoose.Schema(
   {
+    // ======================================================
+    // 🆕 NUEVOS CAMPOS AGREGADOS
+    // ======================================================
     ERRORID: {
-      type: String,
-      required: true,
+      type: Number,
+      default: () => Date.now(), 
     },
 
     CANSEEUSERS: {
       type: [String],
-      required: true,
+      default: [],
     },
 
-    ASSIGNEDUSERS: {
+    ASIGNEDUSERS: {
       type: [String],
       default: [],
     },
@@ -23,8 +26,13 @@ const zterrorlogSchema = new mongoose.Schema(
       default: null,
     },
 
+    RESOLVED_DATE: {
+      type: Date,
+      default: null,
+    },
+
     COMMENTS: {
-      type: [mongoose.Schema.Types.Mixed],
+      type: [Object],
       default: [],
     },
 
@@ -33,23 +41,35 @@ const zterrorlogSchema = new mongoose.Schema(
       default: null,
     },
 
+    USER_SESSION_LOG: {
+      type: [String],
+      default: [],
+    },
+
+    // ======================================================
+    // 🔧 CONTEXT — actualizado para coincidir con los nuevos datos
+    // ======================================================
     CONTEXT: {
       type: [
         {
           stack: { type: String },
-          endpoint: { type: String },
-          requestBody: { type: mongoose.Schema.Types.Mixed },
-          browser: String,
-          os: String,
-          DEVICE: {
-            type: String,
-            default: null,
-          },
+          endponint: { type: String },
+          requestBody: { type: Object },
+          browser: { type: Object },
+          errorMessageRaw: { type: String },
+          stackTrace: { type: Array },
+          component: { type: String },
+          function: { type: String },
+          httpRequest: { type: Object },
+          timestamp: { type: String }
         },
       ],
       default: [],
     },
 
+    // ======================================================
+    // CAMPOS ORIGINALES (NO SE TOCARON)
+    // ======================================================
     ERRORMESSAGE: {
       type: String,
       required: true,
@@ -116,9 +136,8 @@ const zterrorlogSchema = new mongoose.Schema(
 
     CREATED_BY_APP: {
       type: String,
-      default: null,
-      maxlength: 255,
       trim: true,
+      default: null
     },
 
     PROCESS: {
@@ -131,6 +150,11 @@ const zterrorlogSchema = new mongoose.Schema(
       type: String,
       enum: ["DEV", "TEST", "PROD"],
       default: "DEV",
+    },
+
+    DEVICE: {
+      type: String,
+      default: null,
     },
   },
   { collection: "ZTERRORLOG" }

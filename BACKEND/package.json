@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "A simple CAP project.",
   "dependencies": {
-    "@google/genai": "^1.28.0",
     "@google/generative-ai": "^0.24.1",
     "@sap/cds": "^9.4.4",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",

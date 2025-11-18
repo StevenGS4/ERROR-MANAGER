@@ -11,7 +11,6 @@ export const crudErrores = async (params, body) => {
   const { queryType, LoggedUser, dbServer } = params;
 
   try {
-    console.log(queryType)
     // 1️⃣ Validar tipo de query
     if (!functionsDic[queryType]) {
       const msg = `Tipo de consulta no soportado: ${queryType}`;
