@@ -23,9 +23,7 @@ import "@ui5/webcomponents-icons/dist/search.js";
 import "@ui5/webcomponents-icons/dist/refresh.js";
 import "@ui5/webcomponents-icons/dist/add.js";
 import "@ui5/webcomponents-icons/dist/filter.js";
-
-
-
+import { CheckBox } from "@ui5/webcomponents-react";
 
 // Opciones para TYPE_ERROR
 const TYPE_ERROR_OPTIONS = [
@@ -123,30 +121,41 @@ const ErrorLog = () => {
         next = current.filter((v) => v !== value);
       }
 
-      return {
+      const updated = {
         ...prev,
         [key]: next,
       };
+
+      console.log("Nuevo estado:", updated);
+
+      return updated;
     });
   };
 
   // ---- handlers corregidos ----
 
   const handleStatusCheckboxChange = (event) => {
-    const value = event.target.value;
-    const checked = event.detail.checked;
+    // const element = document.
+    const value = event.target.getAttribute("value");
+    const checked = event.target.checked;
+    console.log(value);
+    console.log(checked);
     toggleArrayFilter("status", value, checked);
   };
 
   const handleTypeErrorCheckboxChange = (event) => {
-    const value = event.target.value;
-    const checked = event.detail.checked;
+    const value = event.target.getAttribute("value");
+    const checked = event.target.checked;
+    console.log(value);
+    console.log(checked);
     toggleArrayFilter("typeError", value, checked);
   };
 
   const handleSeverityCheckboxChange = (event) => {
-    const value = event.target.value;
-    const checked = event.detail.checked;
+    const value = event.target.getAttribute("value");
+    const checked = event.target.checked;
+    console.log(value);
+    console.log(checked);
     toggleArrayFilter("severity", value, checked);
   };
 
@@ -194,10 +203,12 @@ const ErrorLog = () => {
 
   // ---- aplicar funcional ----
   const applyFilters = () => {
+    console.log(`filtros `);
+    console.log(advFilters);
     setApplyTrigger((prev) => prev + 1); // 🔥 fuerza rerender y recálculo
+    console.log(`FIltros ${applyTrigger}`);
     filterDialogRef.current?.close();
   };
-
 
   // ---- limpiar COMPLETO ----
   const clearFilters = () => {
@@ -216,11 +227,10 @@ const ErrorLog = () => {
     const dialog = filterDialogRef.current;
     if (!dialog) return;
 
-    dialog.querySelectorAll("ui5-checkbox").forEach((el) => (el.checked = false));
+    dialog.querySelectorAll("CheckBox").forEach((el) => (el.checked = false));
 
     dialog.querySelectorAll("ui5-date-picker").forEach((el) => (el.value = ""));
   };
-
 
   // ============================================================
   // Funciones de filtrado avanzado
@@ -263,8 +273,7 @@ const ErrorLog = () => {
     if (advFilters.date === "MONTH") {
       const now = new Date();
       return (
-        d.getMonth() === now.getMonth() &&
-        d.getFullYear() === now.getFullYear()
+        d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
       );
     }
 
@@ -321,30 +330,33 @@ const ErrorLog = () => {
   // 1) Búsqueda + filtro rápido + filtros avanzados
   // ============================================================
   const filteredErrors = React.useMemo(() => {
-    return errors
-      // 🔎 Búsqueda universal
-      .filter((e) => {
-        if (!search.trim()) return true;
-        const text = search.toLowerCase();
-        const full = JSON.stringify(e).toLowerCase().replace(/[\n\r]/g, " ");
-        return full.includes(text);
-      })
-      // Filtro rápido por estado (Select original)
-      .filter((e) => {
-        if (filter === "ALL") return true;
-        if (filter === "UNRESOLVED")
-          return e.STATUS === "NEW" || e.STATUS === "IN_PROGRESS";
-        if (filter === "RESOLVED") return e.STATUS === "RESOLVED";
-        if (filter === "IGNORED") return e.STATUS === "IGNORED";
-        return true;
-      })
-      // Filtros avanzados
-      .filter(applyStatusFilterAdvanced)
-      .filter(applyTypeErrorFilter)
-      .filter(applySeverityFilter)
-      .filter(applyDateFilter);
+    return (
+      errors
+        // 🔎 Búsqueda universal
+        .filter((e) => {
+          if (!search.trim()) return true;
+          const text = search.toLowerCase();
+          const full = JSON.stringify(e)
+            .toLowerCase()
+            .replace(/[\n\r]/g, " ");
+          return full.includes(text);
+        })
+        // Filtro rápido por estado (Select original)
+        .filter((e) => {
+          if (filter === "ALL") return true;
+          if (filter === "UNRESOLVED")
+            return e.STATUS === "NEW" || e.STATUS === "IN_PROGRESS";
+          if (filter === "RESOLVED") return e.STATUS === "RESOLVED";
+          if (filter === "IGNORED") return e.STATUS === "IGNORED";
+          return true;
+        })
+        // Filtros avanzados
+        .filter(applyStatusFilterAdvanced)
+        .filter(applyTypeErrorFilter)
+        .filter(applySeverityFilter)
+        .filter(applyDateFilter)
+    );
   }, [errors, search, filter, advFilters, applyTrigger]);
-
 
   // ============================================================
   // 2) Separar PENDIENTES / IGNORADOS / RESUELTOS
@@ -515,7 +527,7 @@ const ErrorLog = () => {
               }}
             >
               {STATUS_OPTIONS.map((s) => (
-                <ui5-checkbox
+                <CheckBox
                   key={s}
                   text={s}
                   value={s}
@@ -537,7 +549,7 @@ const ErrorLog = () => {
               }}
             >
               {TYPE_ERROR_OPTIONS.map((t) => (
-                <ui5-checkbox
+                <CheckBox
                   key={t}
                   text={t}
                   value={t}
@@ -559,7 +571,7 @@ const ErrorLog = () => {
               }}
             >
               {SEVERITY_OPTIONS.map((s) => (
-                <ui5-checkbox
+                <CheckBox
                   key={s}
                   text={s}
                   value={s}
@@ -573,10 +585,7 @@ const ErrorLog = () => {
           {/* ORDEN */}
           <section>
             <h4 style={{ marginBottom: "0.5rem" }}>Ordenar por</h4>
-            <Select
-              onChange={handleOrderChange}
-              style={{ width: "220px" }}
-            >
+            <Select onChange={handleOrderChange} style={{ width: "220px" }}>
               <ui5-option value="A-Z">A → Z (por código)</ui5-option>
               <ui5-option value="Z-A">Z → A (por código)</ui5-option>
               <ui5-option value="OLD">Más viejo primero</ui5-option>
@@ -589,10 +598,7 @@ const ErrorLog = () => {
           {/* FECHA */}
           <section>
             <h4 style={{ marginBottom: "0.5rem" }}>Fecha</h4>
-            <Select
-              onChange={handleDateModeChange}
-              style={{ width: "260px" }}
-            >
+            <Select onChange={handleDateModeChange} style={{ width: "260px" }}>
               <ui5-option value="ALL" selected={advFilters.date === "ALL"}>
                 Todos
               </ui5-option>
