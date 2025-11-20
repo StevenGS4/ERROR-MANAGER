@@ -7,7 +7,7 @@ const zterrorlogSchema = new mongoose.Schema(
     // 🆕 NUEVOS CAMPOS AGREGADOS
     // ======================================================
     ERRORID: {
-      type: Number,
+      type: String,
       default: () => Date.now(),
     },
 
