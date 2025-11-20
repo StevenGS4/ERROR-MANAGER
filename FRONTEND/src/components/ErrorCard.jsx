@@ -35,7 +35,7 @@ const ErrorCard = ({ error }) => {
   // 🎨 Colores del chip de severidad
   const severityColor = {
     CRITICAL: "#b91c1c",
-    ERROR: "#dc2626",
+    ERROR: "#9326dcff",
     WARNING: "#f59e0b",
     INFO: "#3b82f6",
   }[error.SEVERITY] || "#6b7280";
