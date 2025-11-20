@@ -62,6 +62,7 @@ const ErrorLog = () => {
   const [filter, setFilter] = useState("ALL"); // filtro rápido original
   const [lastUpdate, setLastUpdate] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loggedUser, setLoggedUser] = useState({});
 
   // 🔥 Filtros avanzados
   const [advFilters, setAdvFilters] = useState({
@@ -79,11 +80,24 @@ const ErrorLog = () => {
   // ============================================================
   // Cargar errores
   // ============================================================
+
+  const getLoggedUser = () => {
+    let user = localStorage.getItem("loggedUser");
+    user = JSON.parse(user);
+    setLoggedUser({
+      USERID: user.USERID,
+      ROLEID: user.ROLEID,
+    });
+    console.log(user);
+  };
+
   const loadErrors = async () => {
+    getLoggedUser();
     try {
       setLoading(true);
       const { ok, rows } = await fetchErrors();
       if (ok && Array.isArray(rows)) {
+        console.log(rows);
         setErrors(rows);
         setLastUpdate(new Date().toLocaleTimeString());
       }
@@ -469,9 +483,15 @@ const ErrorLog = () => {
       {newErrors.length > 0 && (
         <div style={{ marginBottom: "2rem" }}>
           <Title level="H4">🆕 PENDIENTES</Title>
-          {newErrors.map((err) => (
+          {newErrors
+            .filter((err) => err.CANSEEUSERS.includes(loggedUser.USERID))
+            .map((err) => (
+              <ErrorCard key={err._id || err.ERRORID} error={err} />
+            ))}
+
+          {/* {newErrors.map((err) => (
             <ErrorCard key={err._id || err.ERRORID} error={err} />
-          ))}
+          ))} */}
         </div>
       )}
 
@@ -479,9 +499,11 @@ const ErrorLog = () => {
       {Object.entries(ignoredByMonth).map(([month, list]) => (
         <div key={"ignored-" + month} style={{ marginBottom: "2rem" }}>
           <Title level="H4">📅 {month.toUpperCase()} — IGNORADOS</Title>
-          {list.map((err) => (
-            <ErrorCard key={err._id || err.ERRORID} error={err} />
-          ))}
+         {list
+            .filter((err) => err.CANSEEUSERS.includes(loggedUser.USERID))
+            .map((err) => (
+              <ErrorCard key={err._id || err.ERRORID} error={err} />
+            ))}
         </div>
       ))}
 
