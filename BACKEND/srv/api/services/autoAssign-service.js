@@ -2,63 +2,68 @@
 import axios from "axios";
 import ZTERRORLOG from "../models/mongodb/zterrorlog.js";
 
-const USER_API = "http://localhost:3333/api/users/ztusers";
+const USER_GETALL =
+  "http://localhost:3333/api/users/crud?ProcessType=getAll&DBServer=MongoDB&LoggedUser=TEST";
 
-// Diccionario MODULE → ROLES válidos
+const USER_GETBYID =
+  "http://localhost:3333/api/users/crud?ProcessType=getById&DBServer=MongoDB&LoggedUser=TEST";
+
 const MODULE_ROLES = {
   PRODUCTOS: ["dev.productos", "jefe.productos"],
-  // Agrega más módulos si es necesario
 };
 
 export async function runAutoAssign() {
   try {
-    // 1. Buscar errores NEW con CANSEEUSERS vacío
     const errors = await ZTERRORLOG.find({
       STATUS: "NEW",
-      CANSEEUSERS: { $size: 0 },
+      CANSEEUSERS: { $size: 0 }
     });
 
     if (!errors.length) {
-      return {
-        ok: true,
-        scanned: 0,
-        updated: 0,
-        message: "No hay errores NEW pendientes por asignar.",
-      };
+      return { ok: true, scanned: 0, updated: 0 };
     }
 
-    // 2. Obtener usuarios del API
-    const { data } = await axios.get(USER_API);
-    const userList = data?.value || [];
+    // 1️⃣ Obtener usuarios base
+    const resAll = await axios.post(USER_GETALL, { usuario: {} });
+    const allUsers = resAll?.data?.value?.[0]?.dataRes || [];
+    const finalUsers = [];
+
+    // 2️⃣ Obtener roles reales usuario por usuario
+    for (const u of allUsers) {
+      const detail = await axios.post(USER_GETBYID, {
+        usuario: { USERID: u.USERID }
+      });
+
+      const userReal = detail?.data?.value?.[0]?.dataRes;
+
+      if (userReal) {
+        finalUsers.push(userReal);
+      }
+    }
 
     let updated = 0;
     const updates = [];
 
-    // 3. Procesar cada error
+    // 3️⃣ Auto-assign por error
     for (const err of errors) {
-      const moduleName = err.MODULE;
-      const expectedRoles = MODULE_ROLES[moduleName];
+      const expected = MODULE_ROLES[err.MODULE];
+      if (!expected) continue;
 
-      if (!expectedRoles) continue;
-
-      // 4. Filtrar usuarios con roles del módulo
-      const validUsers = userList.filter((u) =>
-        u.ROLES?.some((r) => expectedRoles.includes(r.ROLEID))
+      // filtrar usuarios con roles válidos
+      const validUsers = finalUsers.filter((u) =>
+        u.ROLES?.some((r) => expected.includes(r.ROLEID))
       );
 
-      const userIds = validUsers.map((u) => u.USERID);
+      const ids = validUsers.map(u => u.USERID);
+      if (!ids.length) continue;
 
-      if (!userIds.length) continue;
-
-      // 5. Asignar
-      err.CANSEEUSERS = userIds;
-      //err.ASIGNEDUSERS = userIds;
+      err.CANSEEUSERS = ids;
       await err.save();
 
       updates.push({
-        errorId: err._id,
-        module: moduleName,
-        users: userIds,
+        errorId: err.ERRORID,
+        module: err.MODULE,
+        CANSEEUSERS: ids
       });
 
       updated++;
@@ -68,15 +73,11 @@ export async function runAutoAssign() {
       ok: true,
       scanned: errors.length,
       updated,
-      updates,
-      message: `Escaneados: ${errors.length}, Actualizados: ${updated}`,
+      updates
     };
+
   } catch (err) {
-    console.error("❌ [runAutoAssign] Error:", err);
-    return {
-      ok: false,
-      message: "Error interno en autoAssign",
-      error: err.message,
-    };
+    console.error("❌ AutoAssign:", err);
+    return { ok: false, error: err.message };
   }
 }

@@ -4,18 +4,22 @@ import cds from '@sap/cds';
 import cors from 'cors';
 import env from './srv/config/dotenvXConfig.js';
 import { connectToMongo } from './srv/config/connectToMongo.js';
-import respPWA from './srv/middlewares/respPWA.handler.js'; // ahora sí activo
+import respPWA from './srv/middlewares/respPWA.handler.js'; 
 import { fileURLToPath } from "url";
 import path from "path";
 import iaRoute from "./srv/api/routes/ia-route.js";
 
-// ⭐ NEW: Import del controlador manual
-import { autoAssignHandler } from "./srv/api/controllers/autoAssign-controller.js";
+// ⭐ AUTO-ASIGNACIÓN (automático)
+import { autoAssignController } from "./srv/api/controllers/autoAssign-controller.js";
 
-// ⭐ NEW: Import del servicio automático (cron)
+// ⭐ ASIGNACIÓN MANUAL (nuevo)
+import { manualAssignController } from "./srv/api/controllers/manualAssign-controller.js";
+
+// ⭐ Servicio para el CRON (auto-assign)
 import { runAutoAssign } from "./srv/api/services/autoAssign-service.js";
 
 const app = cds.server;
+
 export default async function startServer(o = {}) {
   console.log('🚀 Iniciando servidor SAP CAP + Express...');
 
@@ -51,8 +55,13 @@ export default async function startServer(o = {}) {
       res.json({ ok: true, service: 'SAP CAP + Express', time: new Date().toISOString() })
     );
 
-    // ⭐ NEW: Ruta manual para asignación
-    app.post("/api/error/assign", autoAssignHandler);
+    // ⭐ RUTAS DEL SISTEMA DE ASIGNACIÓN
+
+    // 🔥 AUTO-ASIGNACIÓN (la original, automática)
+    app.post("/api/error/autoAssign", autoAssignController);
+
+    // 🔥 ASIGNACIÓN MANUAL (nuevo)
+    app.post("/api/error/assign", manualAssignController);
 
     // 3️⃣ Inyectar Express en CAP
     o.app = app;
@@ -63,8 +72,8 @@ export default async function startServer(o = {}) {
     o.app.httpServer = httpServer;
     console.log('✅ CAP activo');
 
-    // ⭐ NEW: CRON cada 3 minutos
-    const THREE_MINUTES = 5 * 60 * 1000;
+    // ⭐ CRON (ejecuta auto-assign cada 5 minutos)
+    const THREE_MINUTES = 2 * 60 * 1000;
     setInterval(async () => {
       try {
         const result = await runAutoAssign();
@@ -94,7 +103,6 @@ export default async function startServer(o = {}) {
         message: `Ruta no encontrada: ${req.originalUrl}`,
       });
     });
-    
 
     // 8️⃣ Global error handler
     app.use((err, req, res, next) => {
@@ -123,8 +131,6 @@ export default async function startServer(o = {}) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   startServer().catch(console.error);
 }
-
-
 
 const __filename = fileURLToPath(import.meta.url);
 if (process.argv[1] === __filename) {
