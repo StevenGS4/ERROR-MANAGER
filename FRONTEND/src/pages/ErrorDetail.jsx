@@ -69,7 +69,10 @@ const ErrorDetail = () => {
       const payload = {
         ...error,
         STATUS: status,
-        RESOLVEDBY: status === "RESOLVED" ? "Admin" : error.RESOLVEDBY
+        RESOLVEDBY: status === "RESOLVED"
+          ? (loggedUser?.USERID || loggedUser?.ALIAS || loggedUser?.USERNAME || "Desconocido")
+          : error.RESOLVEDBY
+
       };
 
       const { ok, message } = await updateError(payload);
@@ -119,25 +122,46 @@ const ErrorDetail = () => {
 
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser") || "{}");
 
+  // 🔥 ASIGNAR USUARIO A ERROR
   async function assignToUser(userId) {
     try {
       const res = await axios.post(
-        "http://localhost:3334/api/error/assign",   // ✔ endpoint correcto
+        "http://localhost:3334/api/error/assign",
         {
           errorId: error.ERRORID,        // ✔ usar ERRORID, no _id
           assignedUser: userId,
-          assignedBy: loggedUser.USERID  // ✔ esto sí está bien
+          assignedBy: loggedUser.USERID, // ✔
+          STATUS: "IN_PROGRESS"
         }
       );
 
       alert("Usuario asignado correctamente.");
-      loadError(); // recargar datos actualizados
+      loadError(); // recargar datos
 
     } catch (err) {
       console.error("❌ Error asignando usuario:", err);
       alert("Error asignando usuario.");
     }
   }
+
+  async function unassignUser() {
+    try {
+      const updated = {
+        ...error,
+        ASIGNEDUSERS: []
+      };
+
+      const { ok } = await updateError(updated);
+      if (!ok) return alert("No se pudo quitar la asignación.");
+
+      alert("Asignación eliminada.");
+      loadError();
+
+    } catch (err) {
+      alert("Error quitando asignación.");
+    }
+  }
+
 
 
   // ============================================================
@@ -170,24 +194,94 @@ const ErrorDetail = () => {
     {
       label: "Usuarios",
       content: (
-        <div style={{ maxWidth: "100%", overflowX: "hidden" }}>
+        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
 
-          <h4>👥 Usuarios que pueden ver este error:</h4>
+          {/* ============ BOTÓN: AGREGAR USUARIO PRO (abre modal) ============ */}
+          {loggedUser.ROLES?.some(r => r.ROLEID.startsWith("jefe.")) && (
+            <div style={{ textAlign: "right", marginBottom: "1.5rem" }}>
+              <ui5-button
+                design="Emphasized"
+                icon="add"
+                onClick={() => document.getElementById("addUserDialog").show()}
+              >
+                Agregar Usuario
+              </ui5-button>
+            </div>
+          )}
 
-          <div className="user-cards">
+          {/* ============ TARJETAS DE USUARIOS ============ */}
+          <h3>👥 Usuarios con acceso al error</h3>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            gap: "1.5rem",
+            marginTop: "1rem"
+          }}>
             {error.CANSEEUSERS?.length ? (
               error.CANSEEUSERS.map((u) => (
-                <div key={u} className="user-card">
-                  <p><b>{u}</b></p>
+                <div key={u}
+                  style={{
+                    background: "white",
+                    borderRadius: "15px",
+                    padding: "1.2rem",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    textAlign: "center"
+                  }}
+                >
+                  {/* FOTO */}
+                  <img
+                    src={`https://i.pravatar.cc/120?u=${u}`}
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      borderRadius: "50%",
+                      marginBottom: "0.8rem"
+                    }}
+                  />
 
-                  {/* ✔ Los roles vienen como arreglo, no como ROLEID directo */}
-                  {loggedUser.ROLES?.some(r => r.ROLEID === "jefe.productos") && (
-                    <button
-                      className="assign-btn"
+                  {/* TÍTULO */}
+                  <h3 style={{ margin: "0.2rem 0" }}>{u}</h3>
+
+                  <p style={{ margin: "0.3rem 0", color: "#6b7280" }}>
+                    Puede ver este error
+                  </p>
+
+                  {/* BOTÓN: ASIGNAR */}
+                  {loggedUser.ROLES?.some(r => r.ROLEID.startsWith("jefe.")) && (
+                    <ui5-button
+                      design="Positive"
+                      icon="employee"
+                      style={{ width: "100%", marginTop: "0.5rem" }}
                       onClick={() => assignToUser(u)}
                     >
                       Asignar
-                    </button>
+                    </ui5-button>
+                  )}
+
+                  {/* BOTÓN: QUITAR VISUALIZACIÓN */}
+                  {loggedUser.ROLES?.some(r => r.ROLEID.startsWith("jefe.")) && (
+                    <ui5-button
+                      design="Negative"
+                      icon="delete"
+                      style={{ width: "100%", marginTop: "0.5rem" }}
+                      onClick={async () => {
+                        if (!confirm(`¿Quitar a ${u} de la visualización?`)) return;
+
+                        const updated = {
+                          ...error,
+                          CANSEEUSERS: error.CANSEEUSERS.filter(x => x !== u)
+                        };
+
+                        const { ok } = await updateError(updated);
+                        if (!ok) return alert("No se pudo quitar.");
+
+                        alert("Usuario removido.");
+                        loadError();
+                      }}
+                    >
+                      Quitar Visualización
+                    </ui5-button>
                   )}
                 </div>
               ))
@@ -196,15 +290,32 @@ const ErrorDetail = () => {
             )}
           </div>
 
-          <h4 style={{ marginTop: "1rem" }}>👤 Usuario asignado:</h4>
+          {/* ============ USUARIO ASIGNADO ============ */}
+          <h4 style={{ marginTop: "2rem" }}>👤 Usuario asignado:</h4>
           <p>{error.ASIGNEDUSERS?.[0] || "Ninguno"}</p>
 
+          {/* BOTÓN: QUITAR ASIGNACIÓN */}
+          {loggedUser.ROLES?.some(r => r.ROLEID.startsWith("jefe.")) && error.ASIGNEDUSERS?.length > 0 && (
+            <ui5-button
+              design="Negative"
+              icon="reset"
+              onClick={unassignUser}
+            >
+              Quitar Asignación
+            </ui5-button>
+          )}
+
+          {/* ============ RESUELTO POR ============ */}
           <h4 style={{ marginTop: "1rem" }}>✔ Resuelto por:</h4>
           <p>{error.RESOLVEDBY || "Aún no resuelto"}</p>
 
         </div>
       ),
     }
+
+
+
+
 
     ,
 
@@ -488,7 +599,7 @@ const ErrorDetail = () => {
                       FINALSOLUTION: aiSuggestion,
                       AI_RESPONSE: aiSuggestion,
                       AI_REQUESTED: true,
-                      RESOLVEDBY: loggedUser?.USERID || "Admin",
+                      RESOLVEDBY: (loggedUser?.USERID || loggedUser?.ALIAS || loggedUser?.USERNAME || "Desconocido"),
                       RESOLVED_DATE: new Date().toISOString(),
                     };
 
@@ -587,7 +698,7 @@ const ErrorDetail = () => {
                     const updated = {
                       ...error,
                       FINALSOLUTION: sol,
-                      RESOLVEDBY: loggedUser?.USERID || "Admin",
+                      RESOLVEDBY: (loggedUser?.USERID || loggedUser?.ALIAS || loggedUser?.USERNAME || "Desconocido"),
                       RESOLVED_DATE: new Date().toISOString(),
                       FINAL_SOLUTION_EDIT_MODE: undefined,
                     };
@@ -623,62 +734,188 @@ const ErrorDetail = () => {
         : "Error";
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <Title level="H2">🧩 Detalle del Error — {error.ERRORCODE}</Title>
+    <>
+      {/* =====================================================
+   MODAL PROFESIONAL — AGREGAR USUARIO
+===================================================== */}
+      <ui5-dialog id="addUserDialog" header-text="Agregar usuario al error" class="add-user-dialog">
 
-      {/* Header */}
-      <Card
-        header={
-          <CardHeader
-            titleText={error.ERRORMESSAGE}
-            subtitleText={`${createdBy} — ${fecha}`}
-            avatar={
-              <img
-                src={`https://i.pravatar.cc/80?u=${createdBy}`}
-                alt={createdBy}
-                className="error-avatar"
-              />
-            }
+        <section style={{ padding: "1.2rem 1.5rem" }}>
+          <p style={{ marginBottom: "0.5rem", color: "#4b5563" }}>
+            Escribe el <b>USERID</b> del usuario que tendrá acceso a visualizar este error.
+          </p>
+
+          <ui5-input
+            id="newUserId"
+            placeholder="Ejemplo: DEVPROD01"
+            show-clear-icon
+            style={{ width: "100%" }}
+          ></ui5-input>
+
+          {/* Mensaje de validación */}
+          <div id="userValidationMsg"
+            style={{
+              marginTop: "0.5rem",
+              color: "#dc2626",
+              fontSize: "0.85rem",
+              display: "none"
+            }}
           >
-            <ObjectStatus slot="status" state={statusState} showDefaultIcon>
-              {error.STATUS}
-            </ObjectStatus>
-          </CardHeader>
-        }
-      />
+            ⚠ Debes ingresar un USERID válido.
+          </div>
 
-      {/* Tabs */}
-      <div style={{ marginTop: "1.5rem" }}>
-        <Tabs tabs={tabs} />
+          {/* Confirmación elegante */}
+          <div id="userConfirmMsg"
+            style={{
+              marginTop: "0.8rem",
+              color: "#2563eb",
+              fontSize: "0.9rem",
+              display: "none"
+            }}
+          >
+            ¿Confirmas agregar este usuario?
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <div slot="footer"
+          style={{
+            display: "flex",
+            gap: "1rem",
+            padding: "1rem",
+            justifyContent: "flex-end"
+          }}
+        >
+          <ui5-button
+            design="Transparent"
+            onClick={() => document.getElementById("addUserDialog").close()}
+          >
+            Cancelar
+          </ui5-button>
+
+          <ui5-button design="Emphasized"
+            id="confirmAddUser"
+            onClick={async () => {
+              const input = document.getElementById("newUserId");
+              const dialog = document.getElementById("addUserDialog");
+              const msg = document.getElementById("userValidationMsg");
+              const confirmBox = document.getElementById("userConfirmMsg");
+
+              const userId = input.value.trim();
+
+              // limpiar mensajes
+              msg.style.display = "none";
+              confirmBox.style.display = "none";
+
+              if (!userId) {
+                msg.textContent = "⚠ Por favor ingresa un USERID.";
+                msg.style.display = "block";
+                return;
+              }
+
+              // Mostrar confirmación elegante
+              confirmBox.style.display = "block";
+
+              // Esperar 600ms antes de agregar (simula "confirmación UI")
+              setTimeout(async () => {
+                try {
+                  const updated = {
+                    ...error,
+                    CANSEEUSERS: [...(error.CANSEEUSERS || []), userId]
+                  };
+
+                  const { ok } = await updateError(updated);
+                  if (!ok) {
+                    msg.textContent = "⚠ No se pudo agregar este usuario.";
+                    msg.style.display = "block";
+                    return;
+                  }
+
+                  input.value = "";
+                  dialog.close();
+                  loadError();
+
+                } catch (e) {
+                  msg.textContent = "⚠ Error al agregar usuario.";
+                  msg.style.display = "block";
+                }
+              }, 600);
+
+            }}
+          >
+            Agregar
+          </ui5-button>
+        </div>
+      </ui5-dialog>
+
+
+      {/* =====================================================
+          CONTENIDO PRINCIPAL
+      ===================================================== */}
+      <div style={{ padding: "2rem" }}>
+        <Title level="H2">
+          🧩 Detalle del Error — {error.ERRORCODE}
+        </Title>
+
+        {/* Header */}
+        <Card
+          header={
+            <CardHeader
+              titleText={error.ERRORMESSAGE}
+              subtitleText={`${createdBy} — ${fecha}`}
+              avatar={
+                <img
+                  src={`https://i.pravatar.cc/80?u=${createdBy}`}
+                  alt={createdBy}
+                  className="error-avatar"
+                />
+              }
+            >
+              <ObjectStatus
+                slot="status"
+                state={statusState}
+                showDefaultIcon
+              >
+                {error.STATUS}
+              </ObjectStatus>
+            </CardHeader>
+          }
+        />
+
+        {/* Tabs */}
+        <div style={{ marginTop: "1.5rem" }}>
+          <Tabs tabs={tabs} />
+        </div>
+
+        {/* Botones */}
+        <FlexBox
+          direction={FlexBoxDirection.Row}
+          style={{
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1.5rem",
+          }}
+        >
+          <Button
+            design="Negative"
+            disabled={saving || error.STATUS === "IGNORED"}
+            onClick={() => handleStatusChange("IGNORED")}
+          >
+            🚫 Ignorar
+          </Button>
+
+          <Button
+            design="Emphasized"
+            disabled={saving || error.STATUS === "RESOLVED"}
+            onClick={() => handleStatusChange("RESOLVED")}
+          >
+            ✅ Marcar Resuelto
+          </Button>
+        </FlexBox>
       </div>
-
-      {/* Botones */}
-      <FlexBox
-        direction={FlexBoxDirection.Row}
-        style={{
-          justifyContent: "flex-end",
-          gap: "1rem",
-          marginTop: "1.5rem",
-        }}
-      >
-        <Button
-          design="Negative"
-          disabled={saving || error.STATUS === "IGNORED"}
-          onClick={() => handleStatusChange("IGNORED")}
-        >
-          🚫 Ignorar
-        </Button>
-
-        <Button
-          design="Emphasized"
-          disabled={saving || error.STATUS === "RESOLVED"}
-          onClick={() => handleStatusChange("RESOLVED")}
-        >
-          ✅ Marcar Resuelto
-        </Button>
-      </FlexBox>
-    </div>
+    </>
   );
+
 };
 
 export default ErrorDetail;
