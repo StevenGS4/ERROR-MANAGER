@@ -17,19 +17,58 @@ export default function TestErrorPage() {
   const [loadingUser, setLoadingUser] = useState(true);
 
   // ============================================================
-  // 1) Cargar usuario logueado
+  // 1) Cargar usuario logueado DESDE LOCALSTORAGE
   // ============================================================
   async function loadUser() {
     try {
-      const res = await axios.get(
-        "http://localhost:3333/api/users/ztusers/USRERROR02"
+      const saved = localStorage.getItem("loggedUser");
+
+      if (!saved) {
+        console.warn("⚠ No hay usuario logueado en localStorage.");
+        setLoadingUser(false);
+        return;
+      }
+
+      const parsed = JSON.parse(saved);
+
+      // ⭐ Validar que exista USERID
+      if (!parsed?.USERID) {
+        console.warn("⚠ Usuario inválido en localStorage.");
+        setLoadingUser(false);
+        return;
+      }
+
+      // ⭐ ACTUALIZAR datos desde API (por si cambiaron)
+      const res = await axios.post(
+        "http://localhost:3333/api/users/crud?ProcessType=getById&DBServer=MongoDB&LoggedUser=TEST",
+        {
+          usuario: { USERID: parsed.USERID }
+        }
       );
 
-      setUser(res.data);
+      // ⭐ Nuevo formato de la API:
+      const userFound =
+        res.data?.value?.[0]?.data?.[0]?.dataRes ||
+        res.data?.value?.[0]?.data?.[0] ||
+        null;
 
-      // Guardar usuario globalmente
-      localStorage.setItem("loggedUser", JSON.stringify(res.data));
+      if (!userFound) {
+        console.error("❌ No se pudo cargar el usuario desde la API.");
+        setLoadingUser(false);
+        return;
+      }
 
+      // ⭐ Normalizar rol (la API lo devuelve dentro de ROLES[])
+      const role = userFound.ROLES?.[0]?.ROLEID || "Sin rol";
+      userFound.ROLEID = role;
+
+      setUser(userFound);
+
+      // Actualizar globalmente
+      localStorage.setItem("loggedUser", JSON.stringify(userFound));
+
+    } catch (err) {
+      console.error("❌ Error cargando usuario:", err);
     } finally {
       setLoadingUser(false);
     }
@@ -40,7 +79,7 @@ export default function TestErrorPage() {
   }, []);
 
   // ============================================================
-  // 2) Generar error con auto-asignación y notificación confiable
+  // 2) Generar error con auto-asignación
   // ============================================================
   const generarError = async () => {
     const err = new Error(
@@ -50,6 +89,7 @@ export default function TestErrorPage() {
     let errorId = null;
 
     try {
+      // 1) Enviar error al ErrorManager (cap + mongo)
       const res = await sendErrorToServer(err, {
         module: "PRODUCTOS",
         component: "ProductSyncService",
@@ -58,53 +98,40 @@ export default function TestErrorPage() {
         code: "PROD-STOCK-500",
         source: "front/ProductSync.jsx",
         CREATED_BY_APP: user?.USERID || "UNKNOWN",
-        process: "Sincronización de catálogo y niveles de inventario",
-        environment: "DEV",
+        process: "Sincronización de catálogo e inventario",
+        environment: "DEV"
       });
 
       errorId = res?.rows?.[0]?._id;
 
-
-      // 2) Obtener el error recién insertado desde EL BACKEND REAL (4002)
-      // 2) Obtener el error recién insertado desde ErrorManager
-      let savedError = null;
+      // 2) Leer error recién guardado (opcional)
       try {
-        savedError = (
-          await axios.get(
-            `http://localhost:3334/odata/v4/api/error/${errorId}`
-          )
+        const savedError = (
+          await axios.get(`http://localhost:3334/odata/v4/api/error/${errorId}`)
         ).data;
 
         console.log("🔥 savedError:", savedError);
-
       } catch (e) {
-        console.warn("No pude obtener el error desde 3334 (ErrorManager):", e);
+        console.warn("⚠ No pude obtener el error desde ErrorManager:", e);
       }
 
-
-      // 3) Intentar auto-asignación
-      // 3) NUEVA AUTO-ASIGNACIÓN (directo al backend)
-      // Auto-assign directo al backend
+      // 3) Auto-assignment
       try {
-        console.log("⚙ Ejecutando auto-assign desde FRONT...");
-
+        console.log("⚙ Ejecutando auto-assign...");
         await axios.post("http://localhost:3334/api/error/assign", {
           errorId,
           module: "PRODUCTOS"
         });
-
-        console.log("🟢 Auto-assign ejecutado correctamente");
+        console.log("🟢 Auto-assign ejecutado");
       } catch (e) {
         console.error("❌ Error en auto-assign:", e);
       }
-
-
 
     } catch (e) {
       console.error("ERROR GENERAL EN generarError:", e);
     }
 
-    // 4) 🔥🔥🔥 S I E M P R E  C O R R E  🔥🔥🔥
+    // 4) Enviar notificación local
     sendNoti(
       err.message,
       errorId,
@@ -147,7 +174,7 @@ export default function TestErrorPage() {
 
         <div className="test-user-info">
           <h2>{user.USERNAME}</h2>
-          <p className="user-role">{user.ROLES?.[0]?.ROLEID}</p>
+          <p className="user-role">{user.ROLEID}</p>
 
           <div className="user-data-box">
             <p><b>ID:</b> {user.USERID}</p>

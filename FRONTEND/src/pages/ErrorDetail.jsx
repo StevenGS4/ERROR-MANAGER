@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Tabs from "../components/Tabs";
+import axios from "axios";
 
 import {
   fetchErrorById,
@@ -115,6 +116,30 @@ const ErrorDetail = () => {
 
   const ctxItem = Array.isArray(error.CONTEXT) ? error.CONTEXT[0] : null;
 
+
+  const loggedUser = JSON.parse(localStorage.getItem("loggedUser") || "{}");
+
+  async function assignToUser(userId) {
+    try {
+      const res = await axios.post(
+        "http://localhost:3334/api/error/assign",   // ✔ endpoint correcto
+        {
+          errorId: error.ERRORID,        // ✔ usar ERRORID, no _id
+          assignedUser: userId,
+          assignedBy: loggedUser.USERID  // ✔ esto sí está bien
+        }
+      );
+
+      alert("Usuario asignado correctamente.");
+      loadError(); // recargar datos actualizados
+
+    } catch (err) {
+      console.error("❌ Error asignando usuario:", err);
+      alert("Error asignando usuario.");
+    }
+  }
+
+
   // ============================================================
   // 🔹 TABS
   // ============================================================
@@ -146,25 +171,42 @@ const ErrorDetail = () => {
       label: "Usuarios",
       content: (
         <div style={{ maxWidth: "100%", overflowX: "hidden" }}>
-          <h4>👥 Usuarios que pueden ver:</h4>
-          <ul>
-            {error.CANSEEUSERS?.length
-              ? error.CANSEEUSERS.map((u) => <li key={u}>{u}</li>)
-              : <i>Sin usuarios asignados</i>}
-          </ul>
 
-          <h4 style={{ marginTop: "1rem" }}>👤 Usuarios asignados:</h4>
-          <ul>
-            {error.ASIGNEDUSERS?.length
-              ? error.ASIGNEDUSERS.map((u) => <li key={u}>{u}</li>)
-              : <i>No hay asignados</i>}
-          </ul>
+          <h4>👥 Usuarios que pueden ver este error:</h4>
+
+          <div className="user-cards">
+            {error.CANSEEUSERS?.length ? (
+              error.CANSEEUSERS.map((u) => (
+                <div key={u} className="user-card">
+                  <p><b>{u}</b></p>
+
+                  {/* ✔ Los roles vienen como arreglo, no como ROLEID directo */}
+                  {loggedUser.ROLES?.some(r => r.ROLEID === "jefe.productos") && (
+                    <button
+                      className="assign-btn"
+                      onClick={() => assignToUser(u)}
+                    >
+                      Asignar
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <i>Sin usuarios asignados</i>
+            )}
+          </div>
+
+          <h4 style={{ marginTop: "1rem" }}>👤 Usuario asignado:</h4>
+          <p>{error.ASIGNEDUSERS?.[0] || "Ninguno"}</p>
 
           <h4 style={{ marginTop: "1rem" }}>✔ Resuelto por:</h4>
           <p>{error.RESOLVEDBY || "Aún no resuelto"}</p>
+
         </div>
       ),
-    },
+    }
+
+    ,
 
     // ------------------------------------------------------------
     // 3) CONTEXTO TÉCNICO (todas las correcciones aquí)

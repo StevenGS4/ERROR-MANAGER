@@ -7,12 +7,6 @@ import {
   StandardListItem
 } from "@ui5/webcomponents-react";
 
-import "@ui5/webcomponents/dist/Avatar.js";
-import "@ui5/webcomponents/dist/Icon.js";
-import "@ui5/webcomponents/dist/Popover.js";
-import "@ui5/webcomponents/dist/List.js";
-import "@ui5/webcomponents/dist/StandardListItem.js";
-
 import "../styles/navbar.css";
 
 export default function Navbar() {
@@ -22,7 +16,19 @@ export default function Navbar() {
 
   useEffect(() => {
     const savedUser = localStorage.getItem("loggedUser");
-    if (savedUser) setUser(JSON.parse(savedUser));
+
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+
+        // Defensa: validar que tenga USERID o USERNAME
+        if (parsed && (parsed.USERID || parsed.USERNAME)) {
+          setUser(parsed);
+        }
+      } catch (e) {
+        console.error("Usuario corrupto en localStorage");
+      }
+    }
 
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
@@ -48,7 +54,11 @@ export default function Navbar() {
       <header className="nav-wrapper">
         <div className="nav-left">
           <h2 className="nav-title">Error Manager</h2>
-          <span className="nav-user-name">{user.USERNAME}</span>
+
+          {/* 🔥 Fallbacks para evitar mostrar () */}
+          <span className="nav-user-name">
+            {user.USERNAME || "Usuario"} 
+          </span>
         </div>
 
         <div className="nav-right">
@@ -60,7 +70,7 @@ export default function Navbar() {
           />
 
           <img
-            src={`https://i.pravatar.cc/150?u=${user.USERID}`}
+            src={`https://i.pravatar.cc/150?u=${user.USERID || "default"}`}
             alt="avatar"
             className="nav-avatar"
             onClick={(e) => popoverRef.current.showAt(e.target)}
@@ -71,7 +81,7 @@ export default function Navbar() {
       <Popover ref={popoverRef} placement="BottomEnd" className="nav-popover">
         <List separators="Inner">
           <StandardListItem icon="employee" type="Inactive">
-            {user.USERNAME} ({user.USERID})
+            {user.USERNAME || "Usuario"} ({user.USERID || "?"})
           </StandardListItem>
 
           <StandardListItem icon="settings" onClick={() => alert("Config…")}>

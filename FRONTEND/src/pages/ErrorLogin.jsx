@@ -19,20 +19,21 @@ export default function ErrorLogin() {
   useEffect(() => {
     const saved = localStorage.getItem("loggedUser");
 
-    // Si hay usuario → modo autologin
     if (saved) {
-      setUser(JSON.parse(saved));
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.USERID) setUser(parsed);
+      } catch {}
       setLoading(false);
       return;
     }
 
-    // Si NO hay usuario → mostrar login manual
     setLoading(false);
   }, []);
 
-  // ===============================
-  // VALIDAR USUARIO MANUALMENTE
-  // ===============================
+  // ============================================================
+  // FUNCION DE LOGIN REAL
+  // ============================================================
   const validarUsuario = async () => {
     if (!manualId.trim()) {
       setErrorMsg("Ingrese el ID de usuario");
@@ -41,28 +42,54 @@ export default function ErrorLogin() {
 
     try {
       setValidating(true);
-      const res = await axios.get(`http://localhost:3333/api/users/ztusers/${manualId}`);
 
-      // Usuario encontrado
-      localStorage.setItem("loggedUser", JSON.stringify(res.data));
-      setUser(res.data);
+      const res = await axios.post(
+        "http://localhost:3333/api/users/crud?ProcessType=getById&DBServer=MongoDB&LoggedUser=TEST",
+        {
+          usuario: { USERID: manualId }
+        }
+      );
+
+      // ======================================================
+      // EXTRACCIÓN REAL SEGÚN LA BITÁCORA QUE MOSTRASTE
+      // ======================================================
+      const usuario =
+        res.data?.value?.[0]?.data?.[0]?.dataRes || // TU API NORMAL
+        res.data?.value?.[0]?.data?.[0] ||            // fallback
+        null;
+
+      if (!usuario) {
+        setErrorMsg("Usuario no encontrado");
+        return;
+      }
+
+      // ======================================================
+      // ROLES (tu API regresa un arreglo en: usuario.ROLES)
+      // ======================================================
+      const role = usuario.ROLES?.[0]?.ROLEID || "Sin rol";
+      usuario.ROLEID = role; // lo guardamos para fácil acceso
+
+      // Guardar en localStorage
+      localStorage.setItem("loggedUser", JSON.stringify(usuario));
+
+      setUser(usuario);
       setErrorMsg("");
 
-    } catch {
+    } catch (err) {
+      console.error("Error login:", err);
       setErrorMsg("Usuario no encontrado");
     } finally {
       setValidating(false);
     }
   };
 
-  // ===============================
-  // INICIAR SESIÓN
-  // ===============================
   const iniciarSesion = () => {
     window.location.href = "/errors";
   };
 
-  // Vista de carga
+  // ============================================================
+  // LOADING
+  // ============================================================
   if (loading)
     return (
       <div className="elogin-loading">
@@ -71,15 +98,13 @@ export default function ErrorLogin() {
       </div>
     );
 
-  // ===============================
-  // SI NO HAY USUARIO MOSTRAR LOGIN MANUAL
-  // ===============================
+  // ============================================================
+  // LOGIN MANUAL
+  // ============================================================
   if (!user)
     return (
       <div className="elogin-fullscreen">
-
         <div className="elogin-box">
-
           <h2 style={{ marginBottom: "6px" }}>Iniciar Sesión</h2>
           <p style={{ color: "#6e7a90", marginBottom: "1rem" }}>
             Introduce tu ID de usuario
@@ -92,9 +117,7 @@ export default function ErrorLogin() {
             className="elogin-input"
           />
 
-          {errorMsg && (
-            <p style={{ color: "red", marginTop: "8px" }}>{errorMsg}</p>
-          )}
+          {errorMsg && <p style={{ color: "red", marginTop: "8px" }}>{errorMsg}</p>}
 
           <Button
             design="Emphasized"
@@ -104,14 +127,13 @@ export default function ErrorLogin() {
           >
             {validating ? "Validando..." : "Continuar"}
           </Button>
-
         </div>
       </div>
     );
 
-  // ===============================
-  // SI HAY USUARIO MOSTRAR CONFIRMACIÓN
-  // ===============================
+  // ============================================================
+  // CONFIRMAR IDENTIDAD
+  // ============================================================
   return (
     <div className="elogin-fullscreen">
       <div className="elogin-box">
@@ -127,13 +149,16 @@ export default function ErrorLogin() {
           <p>Confirmar identidad</p>
         </div>
 
-        <h1>{user.USERNAME}</h1>
-        <span className="elogin-role">{user.ROLES?.[0]?.ROLEID}</span>
+        <h1>{user.USERNAME || "Sin nombre"}</h1>
+
+        <span className="elogin-role">
+          {user.ROLEID || "Sin rol"}
+        </span>
 
         <div className="elogin-data">
           <p><b>ID:</b> {user.USERID}</p>
-          <p><b>Email:</b> {user.EMAIL}</p>
-          <p><b>Alias:</b> {user.ALIAS}</p>
+          <p><b>Email:</b> {user.EMAIL || "Sin email"}</p>
+          <p><b>Alias:</b> {user.ALIAS || "Sin alias"}</p>
         </div>
 
         <Button
