@@ -32,6 +32,14 @@ const ErrorCard = ({ error }) => {
   // 🔥 NUEVO VALOR: nombre del usuario que generó el error
   const user = error.CREATED_BY_APP || error.USER || error.GENERATEDBY || "Sin usuario";
 
+  // 🎨 Colores del chip de severidad
+  const severityColor = {
+    CRITICAL: "#b91c1c",
+    ERROR: "#dc2626",
+    WARNING: "#f59e0b",
+    INFO: "#3b82f6",
+  }[error.SEVERITY] || "#6b7280";
+
   return (
     <div style={{ marginBottom: "1rem", position: "relative" }}>
       <Link to={to} style={{ textDecoration: "none", color: "inherit" }}>
@@ -51,6 +59,7 @@ const ErrorCard = ({ error }) => {
             </ObjectStatus>
           </div>
 
+          {/* 🔹 HEADER */}
           <CardHeader
             titleText={`${error.ERRORCODE || "Sin código"} — ${
               error.ERRORSOURCE || "Origen desconocido"
@@ -65,6 +74,7 @@ const ErrorCard = ({ error }) => {
             }
           />
 
+          {/* 🔹 CUERPO */}
           <FlexBox
             direction={FlexBoxDirection.Column}
             style={{
@@ -73,28 +83,57 @@ const ErrorCard = ({ error }) => {
               borderRadius: "0 0 8px 8px",
             }}
           >
-            {/* 🔹 MENSAJE DEL ERROR (lo tuyo, NO se toca) */}
             <Text style={{ lineHeight: "1.4" }}>
               {error.ERRORMESSAGE || "Sin descripción del error"}
             </Text>
 
-            {/* 🔥🔥🔥 CAMPOS AGREGADOS (NO SE TOCÓ NADA, SOLO SE AGREGÓ) */}
-            <Text style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#444" }}>
-              <b>Tipo:</b> {error.TYPE_ERROR || "No especificado"}
-            </Text>
+            {/* 🔥 CAMPO TIPO Y SEVERIDAD — NUEVO DISEÑO */}
+            <FlexBox
+              direction={FlexBoxDirection.Row}
+              style={{
+                marginTop: "0.8rem",
+                gap: "0.5rem",
+                flexWrap: "wrap",
+              }}
+            >
+              {/* CHIP: Tipo */}
+              <span
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: "12px",
+                  fontSize: "0.75rem",
+                  background: "#e5e7eb",
+                  color: "#111",
+                  fontWeight: 600,
+                }}
+              >
+                {error.TYPE_ERROR || "No especificado"}
+              </span>
 
-            <Text style={{ fontSize: "0.85rem", color: "#444" }}>
-              <b>Severidad:</b> {error.SEVERITY || "Sin severidad"}
-            </Text>
+              {/* CHIP: Severidad */}
+              <span
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: "12px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "white",
+                  background: severityColor,
+                }}
+              >
+                {error.SEVERITY || "Sin severidad"}
+              </span>
+            </FlexBox>
 
-            <Text style={{ fontSize: "0.85rem", color: "#444" }}>
+            {/* 🔹 RESTO DE CAMPOS */}
+            <Text style={{ marginTop: "0.6rem", fontSize: "0.85rem", color: "#444" }}>
               <b>Módulo:</b> {error.MODULE || "No definido"}
             </Text>
 
             <Text style={{ fontSize: "0.85rem", color: "#444" }}>
               <b>Aplicación:</b> {error.APPLICATION || "No especificada"}
             </Text>
-            {/* 🔥🔥🔥 FIN DE AGREGADOS */}
+
           </FlexBox>
         </Card>
       </Link>
