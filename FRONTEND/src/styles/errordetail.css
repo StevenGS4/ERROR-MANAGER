@@ -213,3 +213,12 @@
 .comment-send:hover {
   background-color: #15803d;
 }
+
+.sublist {
+  margin-left: 1.5rem;
+  opacity: 0.9;
+}
+
+.sublist li {
+  list-style-type: circle;
+}
