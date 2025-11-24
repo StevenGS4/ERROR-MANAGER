@@ -480,6 +480,7 @@ const ErrorLog = () => {
           style={{ width: "300px" }}
         />
 
+        {/*
         <Select
           onChange={(e) =>
             setFilter(e.detail.selectedOption.value.toUpperCase())
@@ -492,7 +493,7 @@ const ErrorLog = () => {
           <ui5-option value="RESOLVED">Resueltos</ui5-option>
           <ui5-option value="UNRESOLVED">Pendientes</ui5-option>
           <ui5-option value="IGNORED">Ignorados</ui5-option>
-        </Select>
+        </Select>*/}
 
         <Button
           icon="filter"
