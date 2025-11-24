@@ -22,6 +22,230 @@ import {
   TextArea,
 } from "@ui5/webcomponents-react";
 
+
+function formatAIText(raw) {
+  if (!raw) return "";
+
+  const inlineFormat = (text) => {
+    if (!text) return "";
+
+    // código inline
+    text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+    // **negritas**
+    text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    // *cursiva*
+    text = text.replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+    return text;
+  };
+
+  let text = raw.replace(/\r\n/g, "\n");
+  const lines = text.split("\n");
+
+  let html = "";
+  let inUl = false;
+  let inOl = false;
+  let inSubUl = false;
+  let pOpen = false;
+
+  const closeParagraph = () => {
+    if (pOpen) {
+      html += "</p>";
+      pOpen = false;
+    }
+  };
+
+  const closeAllLists = () => {
+    if (inSubUl) {
+      html += "</ul>";
+      inSubUl = false;
+    }
+    if (inUl) {
+      html += "</ul>";
+      inUl = false;
+    }
+    if (inOl) {
+      html += "</ol>";
+      inOl = false;
+    }
+  };
+
+  for (let line of lines) {
+    const original = line;
+    const trimmed = line.trim();
+
+    // línea vacía => fin de párrafo
+    if (!trimmed) {
+      closeParagraph();
+      continue;
+    }
+
+    // --------- / ________ => HR
+    if (/^[-_]{3,}$/.test(trimmed)) {
+      closeParagraph();
+      closeAllLists();
+      html += "<hr/>";
+      continue;
+    }
+
+    // # headings
+    let m = trimmed.match(/^(#{1,4})\s+(.*)$/);
+    if (m) {
+      const level = m[1].length;
+      const txt = inlineFormat(m[2]);
+      closeParagraph();
+      closeAllLists();
+      html += `<h${level}>${txt}</h${level}>`;
+      continue;
+    }
+
+    // > cita
+    m = trimmed.match(/^>\s+(.*)$/);
+    if (m) {
+      const txt = inlineFormat(m[1]);
+      closeParagraph();
+      closeAllLists();
+      html += `<blockquote>${txt}</blockquote>`;
+      continue;
+    }
+
+    // lista numerada: "1. texto"
+    m = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (m) {
+      const txt = inlineFormat(m[2]);
+      closeParagraph();
+      // cerramos UL si venía de antes
+      if (inUl) {
+        html += "</ul>";
+        inUl = false;
+      }
+      if (!inOl) {
+        html += "<ol>";
+        inOl = true;
+      }
+      html += `<li>${txt}</li>`;
+      continue;
+    }
+
+    // lista con viñetas (con posible sangría)
+    m = original.match(/^(\s*)([-*])\s+(.*)$/);
+    if (m) {
+      const indent = m[1].length;
+      const txt = inlineFormat(m[3]);
+      closeParagraph();
+      if (indent >= 2) {
+        // sublista
+        if (!inSubUl) {
+          html += "<ul class=\"sublist\">";
+          inSubUl = true;
+        }
+        html += `<li>${txt}</li>`;
+      } else {
+        // nivel principal
+        if (inSubUl) {
+          html += "</ul>";
+          inSubUl = false;
+        }
+        if (!inUl) {
+          html += "<ul>";
+          inUl = true;
+        }
+        html += `<li>${txt}</li>`;
+      }
+      continue;
+    }
+
+
+    // línea normal de párrafo
+    closeAllLists();
+    const txt = inlineFormat(trimmed);
+    if (!pOpen) {
+      html += `<p>${txt}`;
+      pOpen = true;
+    } else {
+      html += `<br/>${txt}`;
+    }
+  }
+
+  // Cerrar lo que quede abierto
+  closeParagraph();
+  closeAllLists();
+
+  return html;
+}
+
+
+// Componente que pinta el texto IA con estilo tipo ChatGPT
+// =======================================================
+// 🔥 CHATGPT LAYOUT ENGINE — Versión ULTRA DELUXE
+// =======================================================
+const ChatGPTLayoutEngine = ({ content }) => {
+  if (!content) return null;
+  const html = formatAIText(content);
+
+  return (
+    <div
+      style={{
+        background: "white",
+        color: "#1f2937",
+        padding: "2rem",
+        borderRadius: "16px",
+        border: "1px solid #e5e7eb",
+        fontFamily:
+          "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontSize: "1rem",
+        lineHeight: 1.75,
+        maxHeight: "650px",
+        overflowY: "auto",
+        maxWidth: "100%",
+        boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+        marginTop: "1.5rem",
+        marginBottom: "1.5rem",
+        whiteSpace: "normal",
+      }}
+    >
+      {/* ESTILOS INTERNOS PARA LISTAS ANIDADAS Y HR */}
+      <style>
+        {`
+        .chatgpt-content ul {
+          margin-left: 1.4rem !important;
+          margin-top: 0.3rem;
+          margin-bottom: 0.3rem;
+        }
+        .chatgpt-content ul ul {
+          margin-left: 1.2rem !important;
+        }
+        .chatgpt-content ol {
+          margin-left: 1.5rem !important;
+          margin-top: 0.3rem;
+          margin-bottom: 0.3rem;
+        }
+        .chatgpt-content hr {
+          margin-top: 1.8rem;
+          margin-bottom: 1.8rem;
+          border: none;
+          border-top: 2px solid #e5e7eb;
+        }
+        .chatgpt-content p {
+          margin-top: 0.6rem;
+          margin-bottom: 0.6rem;
+        }
+      `}
+      </style>
+
+      <div
+        className="chatgpt-content"
+        dangerouslySetInnerHTML={{ __html: html }}
+      ></div>
+    </div>
+  );
+
+};
+
+
+
+
+
 const ErrorDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -596,7 +820,21 @@ const ErrorDetail = () => {
                 }}
               >
                 <h4>🤖 Sugerencia generada por IA</h4>
-                <p>{aiSuggestion}</p>
+                {/* Aquí se ve BONITO */}
+                <ChatGPTLayoutEngine content={aiSuggestion} />
+                <div
+                  style={{
+                    marginTop: "1rem",
+                    background: "#e0f2fe",
+                    padding: "1rem",
+                    borderRadius: "10px",
+                    border: "1px solid #38bdf8",
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: formatAIText(aiSuggestion) }}
+                />
+
 
                 <Button
                   design="Negative"
@@ -668,16 +906,15 @@ const ErrorDetail = () => {
                 <div
                   style={{
                     marginTop: "1rem",
-                    background: "#f3f4f6",
-                    padding: "1rem",
+                    background: "transparent",
+                    padding: 0,
                     borderRadius: "10px",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    overflowWrap: "anywhere",
                   }}
                 >
-                  {solucion}
+                  <ChatGPTLayoutEngine content={solucion} />
                 </div>
+
+
 
                 {error.ASIGNEDUSERS.includes(loggedUser.USERID) ? (
                   <Button
@@ -685,7 +922,12 @@ const ErrorDetail = () => {
                     icon="edit"
                     style={{ marginTop: "1rem" }}
                     onClick={() => {
-                      setError({ ...error, FINAL_SOLUTION_EDIT_MODE: true });
+                      setError({
+                        ...error,
+                        FINAL_SOLUTION_EDIT_MODE: true,
+                        FINALSOLUTION: error.FINALSOLUTION || error.AI_RESPONSE || ""
+                      });
+
                     }}
                   >
                     Editar solución
@@ -721,11 +963,8 @@ const ErrorDetail = () => {
                     design="Emphasized"
                     style={{ marginTop: "0.8rem" }}
                     onClick={async () => {
-                      const sol = document
-                        .getElementById("solutionBox")
-                        .value.trim();
-                      if (!sol)
-                        return alert("La solución no puede estar vacía");
+                      const sol = document.getElementById("solutionBox").value.trim();
+                      if (!sol) return alert("La solución no puede estar vacía");
 
                       const updated = {
                         ...error,
@@ -743,11 +982,20 @@ const ErrorDetail = () => {
                       if (!ok) return alert("⚠ No se pudo guardar la solución");
 
                       alert("✅ Solución final guardada");
-                      setError(updated);
+
+                      // ⭐ Recargar datos reales del backend
+                      await loadError();
+
+                      // ⭐ Salir del modo edición
+                      setError((prev) => ({
+                        ...prev,
+                        FINAL_SOLUTION_EDIT_MODE: undefined
+                      }));
                     }}
                   >
                     Guardar solución
                   </Button>
+
                 ) : null}
               </div>
             )}
