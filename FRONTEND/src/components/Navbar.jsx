@@ -35,12 +35,6 @@ export default function Navbar() {
     document.body.setAttribute("data-theme", savedTheme);
   }, []);
 
-  const cambiarTema = () => {
-    const nuevo = theme === "light" ? "dark" : "light";
-    setTheme(nuevo);
-    localStorage.setItem("theme", nuevo);
-    document.body.setAttribute("data-theme", nuevo);
-  };
 
   const cerrarSesion = () => {
     localStorage.removeItem("loggedUser");
@@ -86,13 +80,6 @@ export default function Navbar() {
 
           <StandardListItem icon="settings" onClick={() => (window.location.href = "/config")}>
             Configuración
-          </StandardListItem>
-
-          <StandardListItem
-            icon={theme === "light" ? "moon" : "lightbulb"}
-            onClick={cambiarTema}
-          >
-            {theme === "light" ? "Modo oscuro" : "Modo claro"}
           </StandardListItem>
 
           <StandardListItem icon="log-out" onClick={cerrarSesion}>
