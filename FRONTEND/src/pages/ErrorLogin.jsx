@@ -51,11 +51,11 @@ export default function ErrorLogin() {
       );
 
       // ======================================================
-      // EXTRACCIÓN REAL SEGÚN LA BITÁCORA QUE MOSTRASTE
+      // EXTRACCIÓN REAL
       // ======================================================
       const usuario =
         res.data?.value?.[0]?.data?.[0]?.dataRes || // TU API NORMAL
-        res.data?.value?.[0]?.data?.[0] ||            // fallback
+        res.data?.value?.[0]?.data?.[0] ||          // fallback
         null;
 
       if (!usuario) {
@@ -64,11 +64,13 @@ export default function ErrorLogin() {
       }
 
       // ======================================================
-      // ROLES (tu API regresa un arreglo en: usuario.ROLES)
+      // ROLES
       // ======================================================
       const role = usuario.ROLES?.[0]?.ROLEID || "Sin rol";
       usuario.ROLEID = role; // lo guardamos para fácil acceso
 
+      // usuario ya contiene PROFILE_PIC_URL si existe en la BD
+      
       // Guardar en localStorage
       localStorage.setItem("loggedUser", JSON.stringify(usuario));
 
@@ -88,7 +90,7 @@ export default function ErrorLogin() {
   };
 
   // ============================================================
-  // LOADING
+  // LOADING (No hay cambios aquí)
   // ============================================================
   if (loading)
     return (
@@ -99,7 +101,7 @@ export default function ErrorLogin() {
     );
 
   // ============================================================
-  // LOGIN MANUAL
+  // LOGIN MANUAL (No hay cambios aquí)
   // ============================================================
   if (!user)
     return (
@@ -134,14 +136,24 @@ export default function ErrorLogin() {
   // ============================================================
   // CONFIRMAR IDENTIDAD
   // ============================================================
+  
+  // 🌟 LÓGICA AÑADIDA PARA DETERMINAR LA URL DEL AVATAR 🌟
+  const avatarUrl = user.PROFILE_PIC_URL
+    ? user.PROFILE_PIC_URL
+    : `https://i.pravatar.cc/150?u=${user.USERID}`;
+
   return (
     <div className="elogin-fullscreen">
       <div className="elogin-box">
 
         <img
-          src={`https://i.pravatar.cc/150?u=${user.USERID}`}
+          src={avatarUrl} // <--- 🌟 ¡Usamos la URL guardada o el fallback! 🌟
           className="elogin-avatar"
           alt="avatar"
+          // Manejo de error de carga de imagen opcional
+          onError={(e) => { 
+            e.target.src = `https://i.pravatar.cc/150?u=${user.USERID}`; // Vuelve al pravatar si la URL falla
+          }}
         />
 
         <div className="elogin-title">
