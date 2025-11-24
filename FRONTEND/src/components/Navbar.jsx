@@ -15,6 +15,7 @@ export default function Navbar() {
   const popoverRef = useRef();
 
   useEffect(() => {
+    // Cuando el componente monta, lee el usuario de localStorage
     const savedUser = localStorage.getItem("loggedUser");
 
     if (savedUser) {
@@ -23,7 +24,7 @@ export default function Navbar() {
 
         // Defensa: validar que tenga USERID o USERNAME
         if (parsed && (parsed.USERID || parsed.USERNAME)) {
-          setUser(parsed);
+          setUser(parsed); // El objeto 'parsed' ahora incluye PROFILE_PIC_URL si se guardó
         }
       } catch (e) {
         console.error("Usuario corrupto en localStorage");
@@ -33,7 +34,7 @@ export default function Navbar() {
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
     document.body.setAttribute("data-theme", savedTheme);
-  }, []);
+  }, []); // Este efecto se ejecuta una sola vez al cargar el componente (o al navegar si es una ruta nueva)
 
 
   const cerrarSesion = () => {
@@ -42,6 +43,11 @@ export default function Navbar() {
   };
 
   if (!user) return null;
+
+  // 🌟 NUEVA LÓGICA PARA OBTENER LA URL DE LA FOTO 🌟
+  const avatarUrl = user.PROFILE_PIC_URL 
+    ? user.PROFILE_PIC_URL // Usa la URL guardada en el perfil
+    : `https://i.pravatar.cc/150?u=${user.USERID || "default"}`; // Usa el avatar por defecto si no hay URL guardada
 
   return (
     <>
@@ -64,7 +70,7 @@ export default function Navbar() {
           />
 
           <img
-            src={`https://i.pravatar.cc/150?u=${user.USERID || "default"}`}
+            src={avatarUrl} // <--- 🌟 ¡Usamos la URL calculada! 🌟
             alt="avatar"
             className="nav-avatar"
             onClick={(e) => popoverRef.current.showAt(e.target)}
