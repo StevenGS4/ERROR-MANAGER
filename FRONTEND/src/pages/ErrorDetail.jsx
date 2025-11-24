@@ -71,9 +71,9 @@ const ErrorDetail = () => {
         RESOLVEDBY:
           status === "RESOLVED"
             ? loggedUser?.USERID ||
-              loggedUser?.ALIAS ||
-              loggedUser?.USERNAME ||
-              "Desconocido"
+            loggedUser?.ALIAS ||
+            loggedUser?.USERNAME ||
+            "Desconocido"
             : error.RESOLVEDBY,
       };
 
@@ -113,9 +113,9 @@ const ErrorDetail = () => {
   // 🔹 Fecha
   const fecha = error.ERRORDATETIME
     ? new Date(error.ERRORDATETIME).toLocaleString("es-MX", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
+      dateStyle: "medium",
+      timeStyle: "short",
+    })
     : "Fecha desconocida";
 
   const createdBy = error.CREATED_BY_APP || "Sistema";
@@ -263,43 +263,43 @@ const ErrorDetail = () => {
                   {loggedUser.ROLES?.some((r) =>
                     r.ROLEID.startsWith("jefe.")
                   ) && (
-                    <ui5-button
-                      design="Positive"
-                      icon="employee"
-                      style={{ width: "100%", marginTop: "0.5rem" }}
-                      onClick={() => assignToUser(u)}
-                    >
-                      Asignar
-                    </ui5-button>
-                  )}
+                      <ui5-button
+                        design="Positive"
+                        icon="employee"
+                        style={{ width: "100%", marginTop: "0.5rem" }}
+                        onClick={() => assignToUser(u)}
+                      >
+                        Asignar
+                      </ui5-button>
+                    )}
 
                   {/* BOTÓN: QUITAR VISUALIZACIÓN */}
                   {loggedUser.ROLES?.some((r) =>
                     r.ROLEID.startsWith("jefe.")
                   ) && (
-                    <ui5-button
-                      design="Negative"
-                      icon="delete"
-                      style={{ width: "100%", marginTop: "0.5rem" }}
-                      onClick={async () => {
-                        if (!confirm(`¿Quitar a ${u} de la visualización?`))
-                          return;
+                      <ui5-button
+                        design="Negative"
+                        icon="delete"
+                        style={{ width: "100%", marginTop: "0.5rem" }}
+                        onClick={async () => {
+                          if (!confirm(`¿Quitar a ${u} de la visualización?`))
+                            return;
 
-                        const updated = {
-                          ...error,
-                          CANSEEUSERS: error.CANSEEUSERS.filter((x) => x !== u),
-                        };
+                          const updated = {
+                            ...error,
+                            CANSEEUSERS: error.CANSEEUSERS.filter((x) => x !== u),
+                          };
 
-                        const { ok } = await updateError(updated);
-                        if (!ok) return alert("No se pudo quitar.");
+                          const { ok } = await updateError(updated);
+                          if (!ok) return alert("No se pudo quitar.");
 
-                        alert("Usuario removido.");
-                        loadError();
-                      }}
-                    >
-                      Quitar Visualización
-                    </ui5-button>
-                  )}
+                          alert("Usuario removido.");
+                          loadError();
+                        }}
+                      >
+                        Quitar Visualización
+                      </ui5-button>
+                    )}
                 </div>
               ))
             ) : (
@@ -760,12 +760,29 @@ const ErrorDetail = () => {
   // ============================================================
   // ESTADO VISUAL
   // ============================================================
+  //---------------------------------------------------------------
+  // 🔥 FILTRAR TABS SI EL USUARIO ES EL CREADOR DEL ERROR
+  //---------------------------------------------------------------
+  const isCreator = loggedUser.USERID === error.CREATED_BY_APP;
+
+  let visibleTabs = tabs;
+
+  if (isCreator) {
+    visibleTabs = tabs.filter(
+      (t) =>
+        t.label === "Descripción del Error" ||
+        t.label === "Solución Final"
+    );
+  }
+
+
+
   const statusState =
     error.STATUS === "RESOLVED"
       ? "Success"
       : error.STATUS === "IGNORED"
-      ? "Warning"
-      : "Error";
+        ? "Warning"
+        : "Error";
 
   return (
     <>
@@ -917,7 +934,7 @@ const ErrorDetail = () => {
 
         {/* Tabs */}
         <div style={{ marginTop: "1.5rem" }}>
-          <Tabs tabs={tabs} />
+          <Tabs tabs={visibleTabs} />
         </div>
 
         {/* Botones */}

@@ -24,7 +24,9 @@ import "@ui5/webcomponents-icons/dist/refresh.js";
 import "@ui5/webcomponents-icons/dist/add.js";
 import "@ui5/webcomponents-icons/dist/filter.js";
 import { CheckBox } from "@ui5/webcomponents-react";
+import axios from "axios";
 
+/*
 // Opciones para TYPE_ERROR
 const TYPE_ERROR_OPTIONS = [
   "ALERT",
@@ -52,9 +54,14 @@ const TYPE_ERROR_OPTIONS = [
   "OTRO",
 ];
 
+
+
 const SEVERITY_OPTIONS = ["INFO", "WARNING", "ERROR", "CRITICAL"];
 
 const STATUS_OPTIONS = ["NEW", "IN_PROGRESS", "RESOLVED", "IGNORED"];
+*/
+
+
 
 const ErrorLog = () => {
   const [errors, setErrors] = useState([]);
@@ -74,6 +81,43 @@ const ErrorLog = () => {
     dateFrom: null,
     dateTo: null,
   });
+
+  const [catalogStatus, setCatalogStatus] = useState([]);
+  const [catalogSeverity, setCatalogSeverity] = useState([]);
+  const [catalogTypeError, setCatalogTypeError] = useState([]);
+
+
+  const loadCatalogs = async () => {
+    try {
+      const commonPayload = {};
+      const BASE =
+        "https://api4papalotescatalogos-bmgjbvgjdhf6eafj.mexicocentral-01.azurewebsites.net/api/cat/crudLabelsValues";
+
+      // ---- STATUS_ISSUE ----
+      const statusRes = await axios.post(
+        `${BASE}?ProcessType=getLabelWithValues&LoggedUser=MIGUELLOPEZ&DBServer=MongoDB&IDETIQUETA=STATUS_ISSUE`,
+        commonPayload
+      );
+      setCatalogStatus(statusRes.data?.data?.[0]?.dataRes?.valores || []);
+
+      // ---- SEVERITY_LEVEL ----
+      const severityRes = await axios.post(
+        `${BASE}?ProcessType=getLabelWithValues&LoggedUser=MIGUELLOPEZ&DBServer=MongoDB&IDETIQUETA=SEVERITY_LEVEL`,
+        commonPayload
+      );
+      setCatalogSeverity(severityRes.data?.data?.[0]?.dataRes?.valores || []);
+
+      // ---- TYPE_ERROR ----
+      const typeErrorRes = await axios.post(
+        `${BASE}?ProcessType=getLabelWithValues&LoggedUser=MIGUELLOPEZ&DBServer=MongoDB&IDETIQUETA=TYPE_ERROR`,
+        commonPayload
+      );
+      setCatalogTypeError(typeErrorRes.data?.data?.[0]?.dataRes?.valores || []);
+    } catch (err) {
+      console.error("❌ Error cargando catálogos", err);
+    }
+  };
+
 
   const filterDialogRef = useRef(null);
 
@@ -110,9 +154,12 @@ const ErrorLog = () => {
 
   useEffect(() => {
     loadErrors();
+    loadCatalogs();
+
     const interval = setInterval(loadErrors, 10000);
     return () => clearInterval(interval);
   }, []);
+
 
   // ============================================================
   // Helpers para filtros avanzados
@@ -484,7 +531,12 @@ const ErrorLog = () => {
         <div style={{ marginBottom: "2rem" }}>
           <Title level="H4">🆕 PENDIENTES</Title>
           {newErrors
-            .filter((err) => err.CANSEEUSERS.includes(loggedUser.USERID))
+            .filter(
+              (err) =>
+                err.CANSEEUSERS.includes(loggedUser.USERID) ||
+                err.CREATED_BY_APP === loggedUser.USERID
+            )
+
             .map((err) => (
               <ErrorCard key={err._id || err.ERRORID} error={err} />
             ))}
@@ -500,7 +552,12 @@ const ErrorLog = () => {
         <div key={"ignored-" + month} style={{ marginBottom: "2rem" }}>
           <Title level="H4">📅 {month.toUpperCase()} — IGNORADOS</Title>
           {list
-            .filter((err) => err.CANSEEUSERS.includes(loggedUser.USERID))
+            .filter(
+              (err) =>
+                err.CANSEEUSERS.includes(loggedUser.USERID) ||
+                err.CREATED_BY_APP === loggedUser.USERID
+            )
+
             .map((err) => (
               <ErrorCard key={err._id || err.ERRORID} error={err} />
             ))}
@@ -515,7 +572,12 @@ const ErrorLog = () => {
             <ErrorCard key={err._id || err.ERRORID} error={err} />
           ))} */}
           {list
-            .filter((err) => err.CANSEEUSERS.includes(loggedUser.USERID))
+            .filter(
+              (err) =>
+                err.CANSEEUSERS.includes(loggedUser.USERID) ||
+                err.CREATED_BY_APP === loggedUser.USERID
+            )
+
             .map((err) => (
               <ErrorCard key={err._id || err.ERRORID} error={err} />
             ))}
@@ -553,15 +615,16 @@ const ErrorLog = () => {
                 gap: "0.3rem",
               }}
             >
-              {STATUS_OPTIONS.map((s) => (
+              {catalogStatus.map((s) => (
                 <CheckBox
-                  key={s}
-                  text={s}
-                  value={s}
-                  checked={advFilters.status.includes(s)}
+                  key={s.IDVALOR}
+                  text={s.VALOR}
+                  value={s.VALOR}
+                  checked={advFilters.status.includes(s.VALOR)}
                   onChange={handleStatusCheckboxChange}
                 />
               ))}
+
             </div>
           </section>
 
@@ -575,15 +638,16 @@ const ErrorLog = () => {
                 gap: "0.3rem",
               }}
             >
-              {TYPE_ERROR_OPTIONS.map((t) => (
+              {catalogTypeError.map((t) => (
                 <CheckBox
-                  key={t}
-                  text={t}
-                  value={t}
-                  checked={advFilters.typeError.includes(t)}
+                  key={t.IDVALOR}
+                  text={t.VALOR}
+                  value={t.VALOR}
+                  checked={advFilters.typeError.includes(t.VALOR)}
                   onChange={handleTypeErrorCheckboxChange}
                 />
               ))}
+
             </div>
           </section>
 
@@ -597,15 +661,16 @@ const ErrorLog = () => {
                 gap: "0.3rem",
               }}
             >
-              {SEVERITY_OPTIONS.map((s) => (
+              {catalogSeverity.map((s) => (
                 <CheckBox
-                  key={s}
-                  text={s}
-                  value={s}
-                  checked={advFilters.severity.includes(s)}
+                  key={s.IDVALOR}
+                  text={s.VALOR}
+                  value={s.VALOR}
+                  checked={advFilters.severity.includes(s.VALOR)}
                   onChange={handleSeverityCheckboxChange}
                 />
               ))}
+
             </div>
           </section>
 
