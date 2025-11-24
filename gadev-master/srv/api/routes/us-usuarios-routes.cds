@@ -33,7 +33,12 @@ service UsuariosList @(path: '/api/users/') {
         ALIAS : String;
         PHONENUMBER : String;
         EXTENSION : String;
+        PROFILE_PIC_URL : String;
+        BIRTHDATE : Date;
         DETAIL_ROW : DetailRow;
+        ROLES : array of {
+            ROLEID : String;
+        };
         ROLEID : String;
     }
 
