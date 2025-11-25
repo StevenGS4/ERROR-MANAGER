@@ -31,10 +31,6 @@ import "@ui5/webcomponents-icons/dist/status-positive.js";
 
 const USERS_API_BASE = "http://localhost:3333/api/users/crud";
 
-// ======================================================
-// 🔹 FUNCIONES DE AYUDA Y UTILIDADES
-// ======================================================
-
 // Verifica que el valor SÓLO contenga dígitos y guiones (formato YYYY-MM-DD).
 const isValidDateValue = (value) => {
   const dateRegex = /^[0-9-]*$/;
@@ -66,8 +62,7 @@ export default function ConfigPage() {
 
     try {
       const user = JSON.parse(saved);
-      
-      // 🎯 PASO CLAVE: Formatear la fecha a YYYY-MM-DD
+      // Formatear BIRTHDATE a "YYYY-MM-DD"
       let formattedBirthdate = user.BIRTHDATE || "";
       if (formattedBirthdate && formattedBirthdate.length > 10) {
           formattedBirthdate = formattedBirthdate.substring(0, 10);
@@ -84,7 +79,7 @@ export default function ConfigPage() {
       setProfileForm({
         ...user,
         BIRTHDATE: formattedBirthdate, // Asignamos la fecha limpia al formulario
-        AVATAR: avatarUrl, // Usamos AVATAR como campo temporal para el frontend
+        AVATAR: avatarUrl,
       });
       setNewAvatarUrl(user.PROFILE_PIC_URL || ""); 
     } catch {
@@ -105,7 +100,6 @@ export default function ConfigPage() {
   // 🔹 Limpiar usuario: SOLO CAMPOS VÁLIDOS PARA updateOne
   // ======================================================
   const cleanUserForUpdate = (user) => {
-    // ⚠️ Whitelist de campos permitidos, incluyendo BIRTHDATE y PROFILE_PIC_URL
     const allowed = [
       "USERID",
       "USERNAME",
