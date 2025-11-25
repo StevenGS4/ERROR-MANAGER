@@ -1,5 +1,5 @@
 // src/pages/ConfigPage.jsx
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Button,
   Card,
@@ -31,7 +31,11 @@ import "@ui5/webcomponents-icons/dist/status-positive.js";
 
 const USERS_API_BASE = "http://localhost:3333/api/users/crud";
 
-// Función para validar formato de fecha
+// ======================================================
+// 🔹 FUNCIONES DE AYUDA Y UTILIDADES
+// ======================================================
+
+// Verifica que el valor SÓLO contenga dígitos y guiones (formato YYYY-MM-DD).
 const isValidDateValue = (value) => {
   const dateRegex = /^[0-9-]*$/;
   return dateRegex.test(value);
@@ -46,16 +50,15 @@ export default function ConfigPage() {
   const [activeTab, setActiveTab] = useState("tab-profile");
 
   const [savingProfile, setSavingProfile] = useState(false);
-  const [savingUserId, setSavingUserId] = useState(null);
   const [message, setMessage] = useState(null);
   
-  // 🌟 ESTADOS PARA EL DIÁLOGO DEL AVATAR 🌟
+  // ESTADOS PARA EL DIÁLOGO DEL AVATAR
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const [newAvatarUrl, setNewAvatarUrl] = useState(""); 
   const newAvatarInputRef = useRef(null);
 
   // ======================================================
-  // 🔹 Cargar usuario desde localStorage
+  // 🔹 Cargar usuario desde localStorage y Formatear Fecha
   // ======================================================
   useEffect(() => {
     const saved = localStorage.getItem("loggedUser");
@@ -63,9 +66,16 @@ export default function ConfigPage() {
 
     try {
       const user = JSON.parse(saved);
+      
+      // 🎯 PASO CLAVE: Formatear la fecha a YYYY-MM-DD
+      let formattedBirthdate = user.BIRTHDATE || "";
+      if (formattedBirthdate && formattedBirthdate.length > 10) {
+          formattedBirthdate = formattedBirthdate.substring(0, 10);
+      }
+
       setLoggedUser(user);
 
-      // Usar PROFILE_PIC_URL del usuario o el avatar local/por defecto
+      // Usar PROFILE_PIC_URL del usuario como principal
       const avatarUrl = user.PROFILE_PIC_URL 
         ? user.PROFILE_PIC_URL
         : localStorage.getItem(`userAvatar_${user.USERID}`) ||
@@ -73,9 +83,10 @@ export default function ConfigPage() {
 
       setProfileForm({
         ...user,
+        BIRTHDATE: formattedBirthdate, // Asignamos la fecha limpia al formulario
         AVATAR: avatarUrl, // Usamos AVATAR como campo temporal para el frontend
       });
-      setNewAvatarUrl(user.PROFILE_PIC_URL || ""); // Inicializar la URL en el diálogo
+      setNewAvatarUrl(user.PROFILE_PIC_URL || ""); 
     } catch {
       // ignore
     }
@@ -90,8 +101,11 @@ export default function ConfigPage() {
       ? "Positive"
       : "Information";
 
+  // ======================================================
+  // 🔹 Limpiar usuario: SOLO CAMPOS VÁLIDOS PARA updateOne
+  // ======================================================
   const cleanUserForUpdate = (user) => {
-    // ⚠️ Esta lista es la "whitelist" de campos permitidos
+    // ⚠️ Whitelist de campos permitidos, incluyendo BIRTHDATE y PROFILE_PIC_URL
     const allowed = [
       "USERID",
       "USERNAME",
@@ -102,8 +116,8 @@ export default function ConfigPage() {
       "COMPANYID",
       "CEDIID",
       "EMPLOYEEID",
-      "BIRTHDATE",
-      "PROFILE_PIC_URL",
+      "BIRTHDATE", 
+      "PROFILE_PIC_URL", 
       "ACTIVE", 
     ];
 
@@ -116,9 +130,12 @@ export default function ConfigPage() {
     return clean;
   };
 
+  // ======================================================
+  // 🚀 saveToServer compatible con SAP CAP (updateOne)
+  // ======================================================
   const saveToServer = async (userToSave, loggedUserId) => {
     const cleanBody = cleanUserForUpdate(userToSave);
-    // ... (rest of function)
+
     const params = new URLSearchParams({
       ProcessType: "updateOne",
       DBServer: "MongoDB",
@@ -138,10 +155,10 @@ export default function ConfigPage() {
   const handleProfileChange = (f) => (e) => {
     const value = e.target.value;
     
-    // VALIDACIÓN PARA BIRTHDATE
+    // VALIDACIÓN PARA BIRTHDATE: ignora si contiene caracteres no numéricos/guiones
     if (f === "BIRTHDATE") {
       if (value && !isValidDateValue(value)) {
-        console.warn("Entrada inválida en fecha. Solo se permiten números y guiones.");
+        console.warn("Entrada inválida en fecha.");
         return; 
       }
     }
@@ -153,7 +170,8 @@ export default function ConfigPage() {
   // 🌟 GUARDAR LA NUEVA URL DEL AVATAR 🌟
   // ======================================================
   const handleAvatarSave = async () => {
-    if (!loggedUser || !newAvatarUrl) {
+    const urlToSave = newAvatarUrl.trim();
+    if (!loggedUser || !urlToSave) {
       setAvatarDialogOpen(false);
       return;
     }
@@ -163,7 +181,7 @@ export default function ConfigPage() {
     try {
       const merged = {
         ...loggedUser,
-        PROFILE_PIC_URL: newAvatarUrl.trim(), // Actualizar la URL para el backend
+        PROFILE_PIC_URL: urlToSave, // Actualizar la URL para el backend
       };
 
       await saveToServer(merged, loggedUser.USERID);
@@ -175,11 +193,10 @@ export default function ConfigPage() {
       setLoggedUser(merged);
       setProfileForm((p) => ({
         ...p,
-        PROFILE_PIC_URL: newAvatarUrl.trim(), // Nuevo valor para el backend
-        AVATAR: newAvatarUrl.trim(), // Valor para mostrar en el frontend
+        PROFILE_PIC_URL: urlToSave, // Nuevo valor para el backend
+        AVATAR: urlToSave, // Valor para mostrar en el frontend
       }));
 
-      // Limpiar el localStorage del avatar temporal si existía
       localStorage.removeItem(`userAvatar_${loggedUser.USERID}`);
 
       showMessage("success", "Foto de perfil actualizada correctamente");
@@ -195,7 +212,6 @@ export default function ConfigPage() {
 
   // ======================================================
   // 🔹 Guardar perfil (solo campos válidos)
-  // ⚠️ Asegura que PROFILE_PIC_URL no se borre si ya está en merged
   // ======================================================
   const handleProfileSave = async () => {
     if (!loggedUser) return;
@@ -206,19 +222,19 @@ export default function ConfigPage() {
       const merged = {
         ...loggedUser,
         ...profileForm,
-        // La URL de la foto de perfil se toma de profileForm para el envío
+        // Aseguramos que PROFILE_PIC_URL vaya al backend si se cambió localmente o ya existía
         PROFILE_PIC_URL: profileForm.PROFILE_PIC_URL || loggedUser.PROFILE_PIC_URL,
       };
 
-      // El avatar (campo AVATAR) es solo local para UI, lo eliminamos antes de enviar
+      // El campo AVATAR es solo para la UI, no va al backend
       delete merged.AVATAR;
 
       await saveToServer(merged, loggedUser.USERID);
 
-      // Guardamos versión limpia en localStorage
+      // Guardamos versión actualizada en localStorage
       localStorage.setItem("loggedUser", JSON.stringify(merged));
 
-      // Volvemos a poner el avatar para UI (podría ser la misma URL si es que se guardó antes)
+      // Reestablecer avatar en el estado para la UI
       const avatar = merged.PROFILE_PIC_URL ||
         localStorage.getItem(`userAvatar_${merged.USERID}`);
 
@@ -242,7 +258,6 @@ export default function ConfigPage() {
       </div>
     );
 
-  // El avatar ahora se basa en el campo AVATAR del estado (que contiene la URL final)
   const headerAvatar =
     profileForm.AVATAR || `https://i.pravatar.cc/48?u=${profileForm.USERID}`;
 
@@ -256,7 +271,6 @@ export default function ConfigPage() {
     <div className="config-page-container">
       {/* HEADER */}
       <div className="config-page-header">
-        {/* ... (código del header) */}
         <div>
           <Title level="H1">Configuración</Title>
           <Text>Administra tu perfil</Text>
@@ -302,7 +316,6 @@ export default function ConfigPage() {
                     alt=""
                     className="config-page-avatar"
                   />
-                  {/* 🌟 BOTÓN PARA ABRIR DIÁLOGO 🌟 */}
                   <Button
                     icon="refresh"
                     design="Emphasized"
@@ -321,14 +334,15 @@ export default function ConfigPage() {
                   <Label>ID</Label>
                   <Input value={profileForm.USERID} disabled />
 
-                  {/* Campo Cumpleaños */}
+                  {/* 🎂 CAMPO CUMPLEAÑOS */}
                   <Label>Cumpleaños</Label>
                   <Input
                     value={profileForm.BIRTHDATE || ""} 
                     onInput={handleProfileChange("BIRTHDATE")}
                     type="Date" 
+                    placeholder="AAAA-MM-DD"
                   />
-                  {/* ... (resto de campos que no cambian) ... */}
+
                   <Label>Nombre</Label>
                   <Input
                     value={profileForm.USERNAME}
@@ -385,7 +399,7 @@ export default function ConfigPage() {
 
       </TabContainer>
 
-      {/* 🌟 DIÁLOGO PARA CAMBIAR FOTO DE PERFIL 🌟 */}
+      {/* DIÁLOGO PARA CAMBIAR FOTO DE PERFIL */}
       <Dialog
         headerText="Cambiar Foto de Perfil"
         open={avatarDialogOpen}
@@ -416,7 +430,7 @@ export default function ConfigPage() {
             src={newAvatarUrl || bigAvatar} 
             alt="Vista previa" 
             style={{ width: "100%", height: "auto", marginTop: "1rem", maxHeight: "200px", objectFit: "contain", border: "1px solid #ccc" }}
-            onError={(e) => e.target.src = bigAvatar}
+            onError={(e) => e.target.src = bigAvatar} // Fallback visual
           />
         </div>
       </Dialog>
