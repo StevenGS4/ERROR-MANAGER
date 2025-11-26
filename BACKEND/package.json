@@ -23,9 +23,6 @@
     "srv"
   ],
   "cds": {
-    "requires": {
-      "auth": false
-    },
     "folders": {
       "db": "srv/api/models",
       "srv": "srv/api/routes"
@@ -35,4 +32,3 @@
   "author": "",
   "license": "ISC"
 }
-
