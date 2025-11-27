@@ -22,7 +22,8 @@ const env = {
   API_URL: process.env.API_URL,
   CONNECTION_STRING: process.env.CONNECTION_STRING,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || null,
-  NODE_ENV: process.env.NODE_ENV || 'development'
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  AZURE_STRING: process.env.AZURE_STRING
 };
 
 // Validar las requeridas
