@@ -27,7 +27,7 @@ const ErrorCard = ({ error }) => {
       ? "Warning"
       : "Error";
 
-  const to = `/errors/${error._id || error.ERRORID}`;
+  const to = `/errors/${error._id || error.ERRORID || error.rowKey}`;
 
   // 🔥 NUEVO VALOR: nombre del usuario que generó el error
   const user = error.CREATED_BY_APP || error.USER || error.GENERATEDBY || "Sin usuario";

@@ -22,7 +22,6 @@ import {
   TextArea,
 } from "@ui5/webcomponents-react";
 
-
 function formatAIText(raw) {
   if (!raw) return "";
 
@@ -136,7 +135,7 @@ function formatAIText(raw) {
       if (indent >= 2) {
         // sublista
         if (!inSubUl) {
-          html += "<ul class=\"sublist\">";
+          html += '<ul class="sublist">';
           inSubUl = true;
         }
         html += `<li>${txt}</li>`;
@@ -155,7 +154,6 @@ function formatAIText(raw) {
       continue;
     }
 
-
     // línea normal de párrafo
     closeAllLists();
     const txt = inlineFormat(trimmed);
@@ -173,7 +171,6 @@ function formatAIText(raw) {
 
   return html;
 }
-
 
 // Componente que pinta el texto IA con estilo tipo ChatGPT
 // =======================================================
@@ -239,12 +236,7 @@ const ChatGPTLayoutEngine = ({ content }) => {
       ></div>
     </div>
   );
-
 };
-
-
-
-
 
 const ErrorDetail = () => {
   const { id } = useParams();
@@ -295,9 +287,9 @@ const ErrorDetail = () => {
         RESOLVEDBY:
           status === "RESOLVED"
             ? loggedUser?.USERID ||
-            loggedUser?.ALIAS ||
-            loggedUser?.USERNAME ||
-            "Desconocido"
+              loggedUser?.ALIAS ||
+              loggedUser?.USERNAME ||
+              "Desconocido"
             : error.RESOLVEDBY,
       };
 
@@ -337,9 +329,9 @@ const ErrorDetail = () => {
   // 🔹 Fecha
   const fecha = error.ERRORDATETIME
     ? new Date(error.ERRORDATETIME).toLocaleString("es-MX", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    })
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
     : "Fecha desconocida";
 
   const createdBy = error.CREATED_BY_APP || "Sistema";
@@ -347,16 +339,19 @@ const ErrorDetail = () => {
   const ctxItem = Array.isArray(error.CONTEXT) ? error.CONTEXT[0] : null;
 
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser") || "{}");
-
+  const selectedServer = localStorage.getItem("selectedServer") || "mongo";
   // 🔥 ASIGNAR USUARIO A ERROR
   async function assignToUser(userId) {
     try {
-      const res = await axios.post("http://localhost:3334/api/error/assign", {
-        errorId: error.ERRORID, // ✔ usar ERRORID, no _id
-        assignedUser: userId,
-        assignedBy: loggedUser.USERID, // ✔
-        STATUS: "IN_PROGRESS",
-      });
+      const res = await axios.post(
+        `http://localhost:3334/api/error/assign?dbServer=${selectedServer}`,
+        {
+          errorId: error.ERRORID || error.rowKey, // ✔ usar ERRORID, no _id
+          assignedUser: userId,
+          assignedBy: loggedUser.USERID, // ✔
+          STATUS: "IN_PROGRESS",
+        }
+      );
 
       alert("Usuario asignado correctamente.");
       loadError(); // recargar datos
@@ -487,43 +482,43 @@ const ErrorDetail = () => {
                   {loggedUser.ROLES?.some((r) =>
                     r.ROLEID.startsWith("jefe.")
                   ) && (
-                      <ui5-button
-                        design="Positive"
-                        icon="employee"
-                        style={{ width: "100%", marginTop: "0.5rem" }}
-                        onClick={() => assignToUser(u)}
-                      >
-                        Asignar
-                      </ui5-button>
-                    )}
+                    <ui5-button
+                      design="Positive"
+                      icon="employee"
+                      style={{ width: "100%", marginTop: "0.5rem" }}
+                      onClick={() => assignToUser(u)}
+                    >
+                      Asignar
+                    </ui5-button>
+                  )}
 
                   {/* BOTÓN: QUITAR VISUALIZACIÓN */}
                   {loggedUser.ROLES?.some((r) =>
                     r.ROLEID.startsWith("jefe.")
                   ) && (
-                      <ui5-button
-                        design="Negative"
-                        icon="delete"
-                        style={{ width: "100%", marginTop: "0.5rem" }}
-                        onClick={async () => {
-                          if (!confirm(`¿Quitar a ${u} de la visualización?`))
-                            return;
+                    <ui5-button
+                      design="Negative"
+                      icon="delete"
+                      style={{ width: "100%", marginTop: "0.5rem" }}
+                      onClick={async () => {
+                        if (!confirm(`¿Quitar a ${u} de la visualización?`))
+                          return;
 
-                          const updated = {
-                            ...error,
-                            CANSEEUSERS: error.CANSEEUSERS.filter((x) => x !== u),
-                          };
+                        const updated = {
+                          ...error,
+                          CANSEEUSERS: error.CANSEEUSERS.filter((x) => x !== u),
+                        };
 
-                          const { ok } = await updateError(updated);
-                          if (!ok) return alert("No se pudo quitar.");
+                        const { ok } = await updateError(updated);
+                        if (!ok) return alert("No se pudo quitar.");
 
-                          alert("Usuario removido.");
-                          loadError();
-                        }}
-                      >
-                        Quitar Visualización
-                      </ui5-button>
-                    )}
+                        alert("Usuario removido.");
+                        loadError();
+                      }}
+                    >
+                      Quitar Visualización
+                    </ui5-button>
+                  )}
                 </div>
               ))
             ) : (
@@ -832,9 +827,10 @@ const ErrorDetail = () => {
                     whiteSpace: "normal",
                     wordBreak: "break-word",
                   }}
-                  dangerouslySetInnerHTML={{ __html: formatAIText(aiSuggestion) }}
+                  dangerouslySetInnerHTML={{
+                    __html: formatAIText(aiSuggestion),
+                  }}
                 />
-
 
                 <Button
                   design="Negative"
@@ -914,8 +910,6 @@ const ErrorDetail = () => {
                   <ChatGPTLayoutEngine content={solucion} />
                 </div>
 
-
-
                 {error.ASIGNEDUSERS.includes(loggedUser.USERID) ? (
                   <Button
                     design="Transparent"
@@ -925,9 +919,9 @@ const ErrorDetail = () => {
                       setError({
                         ...error,
                         FINAL_SOLUTION_EDIT_MODE: true,
-                        FINALSOLUTION: error.FINALSOLUTION || error.AI_RESPONSE || ""
+                        FINALSOLUTION:
+                          error.FINALSOLUTION || error.AI_RESPONSE || "",
                       });
-
                     }}
                   >
                     Editar solución
@@ -963,8 +957,11 @@ const ErrorDetail = () => {
                     design="Emphasized"
                     style={{ marginTop: "0.8rem" }}
                     onClick={async () => {
-                      const sol = document.getElementById("solutionBox").value.trim();
-                      if (!sol) return alert("La solución no puede estar vacía");
+                      const sol = document
+                        .getElementById("solutionBox")
+                        .value.trim();
+                      if (!sol)
+                        return alert("La solución no puede estar vacía");
 
                       const updated = {
                         ...error,
@@ -989,13 +986,12 @@ const ErrorDetail = () => {
                       // ⭐ Salir del modo edición
                       setError((prev) => ({
                         ...prev,
-                        FINAL_SOLUTION_EDIT_MODE: undefined
+                        FINAL_SOLUTION_EDIT_MODE: undefined,
                       }));
                     }}
                   >
                     Guardar solución
                   </Button>
-
                 ) : null}
               </div>
             )}
@@ -1017,20 +1013,16 @@ const ErrorDetail = () => {
 
   if (isCreator) {
     visibleTabs = tabs.filter(
-      (t) =>
-        t.label === "Descripción del Error" ||
-        t.label === "Solución Final"
+      (t) => t.label === "Descripción del Error" || t.label === "Solución Final"
     );
   }
-
-
 
   const statusState =
     error.STATUS === "RESOLVED"
       ? "Success"
       : error.STATUS === "IGNORED"
-        ? "Warning"
-        : "Error";
+      ? "Warning"
+      : "Error";
 
   return (
     <>

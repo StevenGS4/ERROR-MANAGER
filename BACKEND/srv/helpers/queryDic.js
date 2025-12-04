@@ -1,5 +1,5 @@
 import mongoService from "../api/services/zterrorlog-service.js";
-import azureService from './../api/services/azure-zterrorlog-service.js'; // Asegúrate de guardar el código anterior con este nombre
+import azureService from "./../api/services/azure-zterrorlog-service.js";
 
 // ====================================================================
 // 🛠️ HELPER: SELECTOR DE SERVICIO
@@ -17,21 +17,16 @@ const runService = async (dbServer, action, payload = null) => {
         : await mongoService.GetAllErrors();
 
     case "getOne":
-      // Payload es el ID
       return isAzure
         ? await azureService.getError(payload)
         : await mongoService.GetOneError(payload);
 
     case "add":
-      // Payload es el objeto del error
       return isAzure
         ? await azureService.addError(payload)
         : await mongoService.InsertOneError(payload);
 
     case "update":
-      // Payload es el objeto a actualizar
-      // ⚠️ ADVERTENCIA: Azure necesita 'rowKey', Mongo necesita '_id'.
-      // Si estamos en Azure y viene _id pero no rowKey, lo mapeamos para evitar errores.
       if (isAzure && payload._id && !payload.rowKey) {
         payload.rowKey = payload._id;
       }
@@ -40,7 +35,6 @@ const runService = async (dbServer, action, payload = null) => {
         : await mongoService.UpdateOneError(payload);
 
     case "delete":
-      // Payload es el ID
       return isAzure
         ? await azureService.deleteError(payload)
         : await mongoService.DeleteOneError(payload);
@@ -51,17 +45,64 @@ const runService = async (dbServer, action, payload = null) => {
 };
 
 // ====================================================================
+// 🔔 HELPER: NOTIFICACIÓN SISTEMA
+// ====================================================================
+const sendSystemNotification = async (errorPayload) => {
+  console.log("=================================");
+  console.log(errorPayload);
+  try {
+    // Definimos el resumen del error (ajusta la propiedad según tu objeto de error real, ej: message, error, description)
+    const errorSummary =
+      errorPayload.ERRORMESSAGE ||
+      errorPayload.error ||
+      "Nuevo error registrado sin detalle";
+
+    // Obtenemos el módulo para el canal. Si no viene, usamos un default.
+    const channelModule = errorPayload.MODULE || "GENERAL";
+
+    const notificationBody = {
+      CONTENT: errorSummary,
+      RECEIPTS: ["JEFEPROD"],
+      CHANNELS: [channelModule],
+    };
+
+    console.log("=================================");
+    console.log(notificationBody);
+
+    const response = await fetch(
+      "https://iw.carbonchat.app/api/v1/messages/sendNotificacionSistema",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(notificationBody),
+      }
+    );
+
+    if (!response.status === 200) {
+      console.error(
+        `⚠️ Error enviando notificación a CarbonChat: ${response.statusText}`
+      );
+    }
+    if (response.status === 200) {
+      console.error(`se mandó noti  ${response.statusText}`);
+    }
+  } catch (error) {
+    // Capturamos error para no detener el flujo principal si falla la notificación
+    console.error("❌ Excepción al enviar notificación de sistema:", error);
+  }
+};
+
+// ====================================================================
 // 🟢 FUNCIONES DEL DICCIONARIO
 // ====================================================================
 
 // === GET ALL ===
 const getAllFunction = async (params, bitacora) => {
   const { LoggedUser, dbServer } = params;
-
-  // Ejecutamos dinámicamente según dbServer
   let result = await runService(dbServer, "getAll");
-
-  result = JSON.parse(result); // Ambos servicios devuelven string, parseamos aquí
+  result = JSON.parse(result);
 
   bitacora.data.push(result.data);
   bitacora.countData =
@@ -69,7 +110,7 @@ const getAllFunction = async (params, bitacora) => {
   bitacora.success = true;
   bitacora.status = 200;
   bitacora.loggedUser = LoggedUser;
-  bitacora.dbServer = dbServer || "mongo"; // Default visual
+  bitacora.dbServer = dbServer || "mongo";
   bitacora.messageUSR = "Errores recuperados correctamente";
   bitacora.messageDEV = `GetAll ejecutado correctamente en [${
     dbServer || "mongo"
@@ -80,13 +121,10 @@ const getAllFunction = async (params, bitacora) => {
 // === GET ONE ===
 const getOneFunction = async (params, bitacora, body) => {
   const { LoggedUser, dbServer } = params;
-
-  // Obtenemos ID (funciona para _id de Mongo o rowKey de Azure)
   const id = body?.data?._id || body?.data?.rowKey || params?.id;
-
   let result = await runService(dbServer, "getOne", id);
-
   result = JSON.parse(result);
+
   bitacora.data.push(result.data);
   bitacora.countData = 1;
   bitacora.success = true;
@@ -124,6 +162,17 @@ const addFunction = async (params, bitacora, body) => {
   const result = await runService(dbServer, "add", payload);
   const parsed = JSON.parse(result);
 
+  // 3) 🔔 NOTIFICAR A CARBONCHAT
+  // Ejecutamos la notificación solo si el servicio devolvió éxito (o siempre, según prefieras).
+  // Aquí asumo que parsed.status o la existencia de data implica éxito.
+  if (parsed) {
+    console.log(parsed);
+    // Pasamos el payload original que contiene 'modulo' y el mensaje
+    // Usamos await si queremos asegurar que se envíe antes de responder,
+    // o quitamos await para "fire and forget" y que responda más rápido al usuario.
+    await sendSystemNotification(payload);
+  }
+
   bitacora.data.push(parsed.data);
   bitacora.success = true;
   bitacora.status = 201;
@@ -140,8 +189,6 @@ const addFunction = async (params, bitacora, body) => {
 // === UPDATE ===
 const updateFunction = async (params, bitacora, body) => {
   const { LoggedUser, dbServer } = params;
-
-  // Parseo preventivo si data viene como string (común en updates complejos)
   let payload = body.data;
   if (typeof payload === "string") {
     try {
@@ -165,8 +212,6 @@ const updateFunction = async (params, bitacora, body) => {
 // === DELETE ===
 const deleteFunction = async (params, bitacora, body) => {
   const { LoggedUser, dbServer } = params;
-
-  // Obtenemos ID o RowKey
   const id = body?.data?._id || body?.data?.rowKey || params?.id;
 
   const result = await runService(dbServer, "delete", id);

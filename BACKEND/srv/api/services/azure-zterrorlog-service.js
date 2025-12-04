@@ -173,6 +173,8 @@ const getError = async (rowKey) => {
 // === INSERT ONE (With Logic + AI) ===
 // ====================================================================
 const addError = async (payload) => {
+  console.log('===============================----------0000')
+  console.log(Object.entries(payload))
   try {
     let errorData = payload;
     if (typeof payload === "string") {
@@ -218,7 +220,7 @@ const addError = async (payload) => {
 
       // JSON Stringified Fields
       CONTEXT: JSON.stringify(errorData.CONTEXT || {}),
-      CANSEEUSERS: JSON.stringify(errorData.CANSEEUSERS || []),
+      CANSEEUSERS: JSON.stringify(errorData.CANSEEUSERS || ['JEFEPROD']),
       ASIGNEDUSERS: JSON.stringify(errorData.ASIGNEDUSERS || []),
       COMMENTS: JSON.stringify([]),
 
