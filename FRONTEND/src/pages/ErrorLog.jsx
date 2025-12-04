@@ -91,7 +91,7 @@ const ErrorLog = () => {
     try {
       const commonPayload = {};
       const BASE =
-        "https://api4papalotescatalogos-bmgjbvgjdhf6eafj.mexicocentral-01.azurewebsites.net/api/cat/crudLabelsValues";
+        "https://api5papalotescatalogos-caf6azeddbehbbak.mexicocentral-01.azurewebsites.net/";
 
       // ---- STATUS_ISSUE ----
       const statusRes = await axios.post(

@@ -14,6 +14,7 @@ import {
   FlexBox,
   FlexBoxDirection,
   Dialog,
+  Switch,
 } from "@ui5/webcomponents-react";
 
 import axios from "axios";
@@ -47,12 +48,32 @@ export default function ConfigPage() {
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [message, setMessage] = useState(null);
-  
+
   // ESTADOS PARA EL DIÁLOGO DEL AVATAR
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
-  const [newAvatarUrl, setNewAvatarUrl] = useState(""); 
+  const [newAvatarUrl, setNewAvatarUrl] = useState("");
   const newAvatarInputRef = useRef(null);
 
+  const [isChecked, setIsChecked] = useState({});
+
+  const handleChange = (e) => {
+    const checked = e.target.checked;
+    setIsChecked(checked);
+
+    localStorage.setItem("selectedServer", checked ? "azure" : "mongo");
+
+    console.log("Switch actual:", checked ? "azure" : "mongo");
+  };
+
+  useEffect(() => {
+    const saved = localStorage.getItem("selectedServer");
+
+    if (saved === "azure") {
+      setIsChecked(true);
+    } else {
+      setIsChecked(false);
+    }
+  }, []);
   // ======================================================
   // 🔹 Cargar usuario desde localStorage y Formatear Fecha
   // ======================================================
@@ -65,13 +86,13 @@ export default function ConfigPage() {
       // Formatear BIRTHDATE a "YYYY-MM-DD"
       let formattedBirthdate = user.BIRTHDATE || "";
       if (formattedBirthdate && formattedBirthdate.length > 10) {
-          formattedBirthdate = formattedBirthdate.substring(0, 10);
+        formattedBirthdate = formattedBirthdate.substring(0, 10);
       }
 
       setLoggedUser(user);
 
       // Usar PROFILE_PIC_URL del usuario como principal
-      const avatarUrl = user.PROFILE_PIC_URL 
+      const avatarUrl = user.PROFILE_PIC_URL
         ? user.PROFILE_PIC_URL
         : localStorage.getItem(`userAvatar_${user.USERID}`) ||
           `https://i.pravatar.cc/150?u=${user.USERID}`;
@@ -81,7 +102,7 @@ export default function ConfigPage() {
         BIRTHDATE: formattedBirthdate, // Asignamos la fecha limpia al formulario
         AVATAR: avatarUrl,
       });
-      setNewAvatarUrl(user.PROFILE_PIC_URL || ""); 
+      setNewAvatarUrl(user.PROFILE_PIC_URL || "");
     } catch {
       // ignore
     }
@@ -90,11 +111,7 @@ export default function ConfigPage() {
   const showMessage = (type, text) => setMessage({ type, text });
 
   const mapMsgDesign = (t) =>
-    t === "error"
-      ? "Negative"
-      : t === "success"
-      ? "Positive"
-      : "Information";
+    t === "error" ? "Negative" : t === "success" ? "Positive" : "Information";
 
   // ======================================================
   // 🔹 Limpiar usuario: SOLO CAMPOS VÁLIDOS PARA updateOne
@@ -110,9 +127,9 @@ export default function ConfigPage() {
       "COMPANYID",
       "CEDIID",
       "EMPLOYEEID",
-      "BIRTHDATE", 
-      "PROFILE_PIC_URL", 
-      "ACTIVE", 
+      "BIRTHDATE",
+      "PROFILE_PIC_URL",
+      "ACTIVE",
     ];
 
     const clean = {};
@@ -148,12 +165,12 @@ export default function ConfigPage() {
   // ======================================================
   const handleProfileChange = (f) => (e) => {
     const value = e.target.value;
-    
+
     // VALIDACIÓN PARA BIRTHDATE: ignora si contiene caracteres no numéricos/guiones
     if (f === "BIRTHDATE") {
       if (value && !isValidDateValue(value)) {
         console.warn("Entrada inválida en fecha.");
-        return; 
+        return;
       }
     }
 
@@ -182,7 +199,7 @@ export default function ConfigPage() {
 
       // Guardar en localStorage (incluyendo la nueva PROFILE_PIC_URL)
       localStorage.setItem("loggedUser", JSON.stringify(merged));
-      
+
       // Actualizar el estado del frontend
       setLoggedUser(merged);
       setProfileForm((p) => ({
@@ -203,7 +220,6 @@ export default function ConfigPage() {
     }
   };
 
-
   // ======================================================
   // 🔹 Guardar perfil (solo campos válidos)
   // ======================================================
@@ -217,7 +233,8 @@ export default function ConfigPage() {
         ...loggedUser,
         ...profileForm,
         // Aseguramos que PROFILE_PIC_URL vaya al backend si se cambió localmente o ya existía
-        PROFILE_PIC_URL: profileForm.PROFILE_PIC_URL || loggedUser.PROFILE_PIC_URL,
+        PROFILE_PIC_URL:
+          profileForm.PROFILE_PIC_URL || loggedUser.PROFILE_PIC_URL,
       };
 
       // El campo AVATAR es solo para la UI, no va al backend
@@ -229,7 +246,8 @@ export default function ConfigPage() {
       localStorage.setItem("loggedUser", JSON.stringify(merged));
 
       // Reestablecer avatar en el estado para la UI
-      const avatar = merged.PROFILE_PIC_URL ||
+      const avatar =
+        merged.PROFILE_PIC_URL ||
         localStorage.getItem(`userAvatar_${merged.USERID}`);
 
       setLoggedUser(merged);
@@ -243,7 +261,6 @@ export default function ConfigPage() {
       setSavingProfile(false);
     }
   };
-
 
   if (!loggedUser)
     return (
@@ -299,17 +316,13 @@ export default function ConfigPage() {
         <Tab id="tab-profile" text="Mi Perfil" icon="employee">
           <Card>
             <div className="config-page-content">
-              <FlexBox
-                direction={FlexBoxDirection.Row}
-                style={{ gap: "2rem" }}
-              >
+              <FlexBox direction={FlexBoxDirection.Row} style={{ gap: "2rem" }}>
                 {/* AVATAR Y BOTÓN DE CAMBIO */}
-                <FlexBox direction={FlexBoxDirection.Column} style={{ gap: "0.5rem", alignItems: "center" }}>
-                  <img
-                    src={bigAvatar}
-                    alt=""
-                    className="config-page-avatar"
-                  />
+                <FlexBox
+                  direction={FlexBoxDirection.Column}
+                  style={{ gap: "0.5rem", alignItems: "center" }}
+                >
+                  <img src={bigAvatar} alt="" className="config-page-avatar" />
                   <Button
                     icon="refresh"
                     design="Emphasized"
@@ -331,9 +344,9 @@ export default function ConfigPage() {
                   {/* 🎂 CAMPO CUMPLEAÑOS */}
                   <Label>Cumpleaños</Label>
                   <Input
-                    value={profileForm.BIRTHDATE || ""} 
+                    value={profileForm.BIRTHDATE || ""}
                     onInput={handleProfileChange("BIRTHDATE")}
-                    type="Date" 
+                    type="Date"
                     placeholder="AAAA-MM-DD"
                   />
 
@@ -359,25 +372,28 @@ export default function ConfigPage() {
                   <Input
                     value={profileForm.PHONENUMBER || ""}
                     onInput={handleProfileChange("PHONENUMBER")}
-                    type="Number" 
+                    type="Number"
                   />
 
                   <Label>Extensión</Label>
                   <Input
                     value={profileForm.EXTENSION || ""}
-                    onInput={handleProfileChange("EXTENSION")} disabled
+                    onInput={handleProfileChange("EXTENSION")}
+                    disabled
                   />
 
                   <Label>Company ID</Label>
                   <Input
                     value={profileForm.COMPANYID || ""}
-                    onInput={handleProfileChange("COMPANYID")} disabled
+                    onInput={handleProfileChange("COMPANYID")}
+                    disabled
                   />
 
                   <Label>Employee ID</Label>
                   <Input
                     value={profileForm.EMPLOYEEID || ""}
-                    onInput={handleProfileChange("EMPLOYEEID")} disabled
+                    onInput={handleProfileChange("EMPLOYEEID")}
+                    disabled
                   />
                 </div>
               </FlexBox>
@@ -391,6 +407,35 @@ export default function ConfigPage() {
           </Card>
         </Tab>
 
+        {/* TAB SERVER CONFIG */}
+        <Tab id="tab-profile" text="Server Configuration" icon="settings">
+          <Card>
+            <div className="config-page-content">
+              <FlexBox direction={FlexBoxDirection.Row} style={{ gap: "2rem" }}>
+                {/* FORM */}
+                <div className="config-page-form">
+                  <Label>Server</Label>
+                  <FlexBox
+                    direction={FlexBoxDirection.Row}
+                    justifyContent="Center"
+                    alignItems="Center"
+                    style={{ gap: "2rem", height: "100px" }} // puedes ajustar la altura
+                  >
+                    <Label>Mongo</Label>
+                    <Switch
+                      checked={isChecked}
+                      onChange={handleChange}
+                      textOn="Azure"
+                      textOff="Mongo"
+                      style={{ padding: "0.5rem" }}
+                    />
+                    <Label>Azure</Label>
+                  </FlexBox>
+                </div>
+              </FlexBox>
+            </div>
+          </Card>
+        </Tab>
       </TabContainer>
 
       {/* DIÁLOGO PARA CAMBIAR FOTO DE PERFIL */}
@@ -403,7 +448,10 @@ export default function ConfigPage() {
             <Button design="Emphasized" onClick={handleAvatarSave}>
               Guardar URL
             </Button>
-            <Button design="Transparent" onClick={() => setAvatarDialogOpen(false)}>
+            <Button
+              design="Transparent"
+              onClick={() => setAvatarDialogOpen(false)}
+            >
               Cancelar
             </Button>
           </>
@@ -420,15 +468,21 @@ export default function ConfigPage() {
             onInput={(e) => setNewAvatarUrl(e.target.value)}
             style={{ width: "100%" }}
           />
-          <img 
-            src={newAvatarUrl || bigAvatar} 
-            alt="Vista previa" 
-            style={{ width: "100%", height: "auto", marginTop: "1rem", maxHeight: "200px", objectFit: "contain", border: "1px solid #ccc" }}
-            onError={(e) => e.target.src = bigAvatar} // Fallback visual
+          <img
+            src={newAvatarUrl || bigAvatar}
+            alt="Vista previa"
+            style={{
+              width: "100%",
+              height: "auto",
+              marginTop: "1rem",
+              maxHeight: "200px",
+              objectFit: "contain",
+              border: "1px solid #ccc",
+            }}
+            onError={(e) => (e.target.src = bigAvatar)} // Fallback visual
           />
         </div>
       </Dialog>
-
     </div>
   );
 }
