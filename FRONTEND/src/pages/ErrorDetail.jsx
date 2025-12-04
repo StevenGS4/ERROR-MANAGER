@@ -279,6 +279,8 @@ const ErrorDetail = () => {
 
     try {
       setSaving(true);
+      console.log("==================");
+      console.log(error);
 
       const payload = {
         ...error,
@@ -728,6 +730,9 @@ const ErrorDetail = () => {
                   ...error,
                   COMMENTS: [...(error.COMMENTS || []), newComment],
                 };
+
+                console.log("==================");
+                console.log(updated.rowKey);
 
                 const { ok } = await updateError(updated);
                 if (!ok) return alert("⚠ No se pudo guardar el comentario");

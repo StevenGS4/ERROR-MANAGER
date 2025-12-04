@@ -27,9 +27,11 @@ const runService = async (dbServer, action, payload = null) => {
         : await mongoService.InsertOneError(payload);
 
     case "update":
-      if (isAzure && payload._id && !payload.rowKey) {
-        payload.rowKey = payload._id;
-      }
+      // if (isAzure && payload._id && !payload.rowKey) {
+      //   payload.rowKey = payload._id;
+      // }
+      // console.log()
+      console.log(payload.rowKey)
       return isAzure
         ? await azureService.updateError(payload)
         : await mongoService.UpdateOneError(payload);

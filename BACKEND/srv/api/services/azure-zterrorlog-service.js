@@ -249,7 +249,7 @@ const addError = async (payload) => {
 };
 
 // ====================================================================
-// === UPDATE ONE ===
+// === UPDATE ONE (CORREGIDO Y SANITIZADO) ===
 // ====================================================================
 const updateError = async (payload) => {
   // Payload debe incluir rowKey para saber cuál actualizar
@@ -258,21 +258,32 @@ const updateError = async (payload) => {
   if (!rowKey) return sendResponse(400, "RowKey is required for update");
 
   try {
-    // Primero obtenemos la entidad actual para no sobrescribir datos accidentalmente (Strategy: Merge)
+    // 1. Obtener la entidad actual (Strategy: Merge)
     const currentEntity = await tableClient.getEntity(PARTITION_KEY, rowKey);
 
-    // Preparamos los updates, asegurando stringify donde sea necesario
+    // 2. Preparar los updates
     const updatedFields = { ...updates };
 
-    if (updates.CONTEXT)
-      updatedFields.CONTEXT = JSON.stringify(updates.CONTEXT);
-    if (updates.COMMENTS)
-      updatedFields.COMMENTS = JSON.stringify(updates.COMMENTS);
-    if (updates.ASIGNEDUSERS)
-      updatedFields.ASIGNEDUSERS = JSON.stringify(updates.ASIGNEDUSERS);
+    // Lista de campos prohibidos que Azure envía al leer pero rechaza al escribir
+    const SYSTEM_FIELDS = ['odata.metadata', 'odata.etag', 'Timestamp', 'PartitionKey', 'RowKey'];
 
-    // createEntity vs updateEntity vs upsertEntity
-    // updateEntity con "Merge" solo actualiza los campos enviados
+    // 3. LIMPIEZA Y STRINGIFY AUTOMÁTICO
+    Object.keys(updatedFields).forEach((key) => {
+      // A) Si es un campo de sistema o empieza con "odata.", LO BORRAMOS
+      if (SYSTEM_FIELDS.includes(key) || key.startsWith('odata.')) {
+        delete updatedFields[key];
+        return; // Pasamos al siguiente
+      }
+
+      const value = updatedFields[key];
+
+      // B) Si es un Objeto o Arreglo (y no es Fecha), lo convertimos a String
+      if (value && typeof value === "object" && !(value instanceof Date)) {
+        updatedFields[key] = JSON.stringify(value);
+      }
+    });
+
+    // 4. Ejecutar Update en Azure
     await tableClient.updateEntity(
       {
         partitionKey: PARTITION_KEY,
@@ -282,12 +293,17 @@ const updateError = async (payload) => {
       "Merge"
     );
 
-    // Devolvemos la versión actualizada fusionada
-    const finalEntity = { ...currentEntity, ...updatedFields };
-    return sendResponse(200, "Updated successfully", parseEntity(finalEntity));
+    // 5. Devolver respuesta fusionada
+    const rawMerged = { ...currentEntity, ...updatedFields };
+    const cleanMerged = parseEntity(rawMerged); 
+
+    return sendResponse(200, "Updated successfully", cleanMerged);
+
   } catch (error) {
     console.error("❌ [UpdateError] Error:", error);
-    return sendResponse(500, "Error updating entity", [], error.message);
+    // Agregamos detalle del error para debugging
+    const errorDetails = error.details?.odataError?.message?.value || error.message;
+    return sendResponse(500, "Error updating entity", [], errorDetails);
   }
 };
 
